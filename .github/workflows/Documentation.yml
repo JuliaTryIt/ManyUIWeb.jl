@@ -44,6 +44,12 @@ jobs:
             url."https://x-access-token:${DUALUI_READ_TOKEN}@github.com/".insteadOf \
             "https://github.com/"
       - name: Configure doc environment
+        env:
+          # Pkg clones through LibGit2 by default, and LibGit2 does NOT
+          # honour the url.insteadOf rewrite configured above -- it would
+          # go to github.com unauthenticated and fail on the private repo.
+          # This makes Pkg shell out to the git CLI, which does honour it.
+          JULIA_PKG_USE_CLI_GIT: 'true'
         shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
