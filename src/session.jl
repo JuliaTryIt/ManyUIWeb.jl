@@ -61,10 +61,11 @@ function Session(id::AbstractString, factory,
     # ONE call, and it is the whole isolation story: a fresh tree yields
     # a fresh App, Channel, Buffer pair and Task.
     root = factory()::DualUI.Widget
+    # `config.app` is the whole AppConfig, not a two-field copy of it:
+    # building one here from `min_size`/`title` alone silently dropped
+    # `diff_gap`, `esc_timeout` and `sync_frames` on every session.
     app = DualUI.App(root, driver;
-                     config = DualUI.AppConfig(;
-                                  min_size = config.min_size,
-                                  title = config.title),
+                     config = config.app,
                      stylesheet = stylesheet)
     now = time()
     return Session(String(id), driver, app, SessionState.NEW, nothing,

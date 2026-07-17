@@ -16,5 +16,5 @@ ControlKind
 ```@autodocs
 Modules = [DualUIWeb]
 Pages = ["protocol.jl", "assets.jl", "wsdriver.jl", "session.jl",
-         "server.jl"]
+         "server.jl", "backend.jl"]
 ```

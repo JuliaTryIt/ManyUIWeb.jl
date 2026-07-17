@@ -105,3 +105,45 @@ cfg = ServerConfig()
 `hello` arrives carrying the real terminal dimensions, and `min_size`
 is the threshold below which the client sees the "Increase Terminal
 Size" overlay — exactly as it would on a small tty.
+
+## `launch`: the same app, either target
+
+`serve` is the web-specific entry point and is not going anywhere. But an
+app that runs in a browser is a plain DualUI app, and `launch` lets you say
+so — the backend is the only thing that changes:
+
+```julia
+using DualUI, DualUIWeb
+
+ui() = Container(Label("hello"))
+
+launch(ui)                                   # this terminal
+launch(ui; backend = WebBackend(port = 8000))  # a browser
+```
+
+`config::AppConfig` and `stylesheet` describe the app, so they are spelled
+identically on both lines. `WebBackend` takes every [`serve`](@ref)
+keyword, because it wraps a [`ServerConfig`](@ref):
+
+```julia
+launch(ui; backend = WebBackend(port = 8000, title = "Dashboard",
+                                multi_session = false))
+```
+
+Like every `launch`, this blocks until the server stops and absorbs Ctrl-C
+— the `try`/`wait`/`finally stop!` dance the examples write by hand. Pass
+`wait = false` to get the live [`WebServer`](@ref) back instead; it answers
+`isopen`/`close`/`wait` like any other `launch` handle.
+
+### App config reaches sessions
+
+`AppConfig` is threaded into every session, so knobs with no `ServerConfig`
+twin — `diff_gap`, `esc_timeout`, `sync_frames` — now reach a served app:
+
+```julia
+launch(ui; backend = WebBackend(port = 8000),
+       config = AppConfig(; title = "Dashboard", diff_gap = 8))
+```
+
+`ServerConfig(; title, min_size)` keeps working and keeps meaning what it
+did; an explicit `app::AppConfig` wins over both.

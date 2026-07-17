@@ -33,7 +33,9 @@ include("assets.jl")
 include("wsdriver.jl")
 include("session.jl")
 include("server.jl")
+include("backend.jl")
 
 export WebServer, ServerConfig, WebSocketDriver, Session, serve
+export WebBackend
 
 end # module

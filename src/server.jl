@@ -70,7 +70,36 @@ struct ServerConfig
     default_size::DualUI.Size
     "X2. Below this a session shows the overlay."
     min_size::DualUI.Size
+    """
+    The APP config every session is built with.
+
+    `min_size` and `title` above describe the app, not the transport, and
+    they predate this field; they are kept because they are the documented
+    spelling, and by default they are what this is built from. Pass `app`
+    explicitly to reach the `AppConfig` knobs that have no `ServerConfig`
+    twin -- `diff_gap`, `esc_timeout`, `sync_frames` -- which were
+    otherwise unreachable through `serve`. Passing `app` WINS: `title` and
+    `min_size` are then ignored.
+    """
+    app::DualUI.AppConfig
 end
+
+"""
+The nine-field positional form, from before `app` existed.
+
+`app` is the tenth field and every caller that predates it spelled the
+other nine out in order. Deriving `app` from `min_size` and `title` here
+is what that spelling always meant, so those callers keep working and keep
+meaning the same thing.
+"""
+ServerConfig(host::Sockets.IPAddr, port::Int, multi_session::Bool,
+             session_timeout::Float64, reap_interval::Float64,
+             max_sessions::Int, title::AbstractString,
+             default_size::DualUI.Size,
+             min_size::DualUI.Size)::ServerConfig =
+    ServerConfig(host, port, multi_session, session_timeout, reap_interval,
+                 max_sessions, String(title), default_size, min_size,
+                 DualUI.AppConfig(; min_size = min_size, title = title))
 
 """
 Config with the documented defaults.
@@ -83,10 +112,13 @@ ServerConfig(; host::Sockets.IPAddr = Sockets.localhost,
                max_sessions::Int = 64,
                title::AbstractString = "DualUI",
                default_size::DualUI.Size = DualUI.Size(80, 24),
-               min_size::DualUI.Size = DualUI.Size(20, 5))::ServerConfig =
+               min_size::DualUI.Size = DualUI.Size(20, 5),
+               app::DualUI.AppConfig =
+                   DualUI.AppConfig(; min_size = min_size,
+                                      title = title))::ServerConfig =
     ServerConfig(host, port, multi_session, session_timeout,
                  reap_interval, max_sessions, String(title),
-                 default_size, min_size)
+                 default_size, min_size, app)
 
 """
 W5. The listener, the session table and the reaper.
