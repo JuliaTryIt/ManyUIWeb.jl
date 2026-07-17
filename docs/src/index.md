@@ -147,3 +147,31 @@ launch(ui; backend = WebBackend(port = 8000),
 
 `ServerConfig(; title, min_size)` keeps working and keeps meaning what it
 did; an explicit `app::AppConfig` wins over both.
+
+## A neutral transport: DualUI or Tachikoma
+
+The server, the WebSocket loop and the reaper name no UI framework. They
+drive whatever satisfies two interfaces -- [`AbstractSession`](@ref) (one
+client's app instance) and [`AbstractFrontend`](@ref) (mints one session
+per connection). DualUI is the default frontend; `serve` builds it. Any
+framework that emits terminal bytes can be another, because xterm.js
+renders terminal bytes and the wire never cared where they came from.
+
+### Tachikoma in the browser
+
+A [Tachikoma](https://github.com/kahliburke/Tachikoma.jl) app runs over the
+same transport, through a frontend that ships as a package extension:
+
+```julia
+using DualUIWeb, Tachikoma
+
+serve_tachikoma(() -> MyModel(); port = 8000)
+```
+
+This needs a Tachikoma that accepts an `io=` sink (`with_terminal`/`app`) --
+[Tachikoma PR #39](https://github.com/kahliburke/Tachikoma.jl/pull/39), so
+dev a patched Tachikoma until it lands. Two constraints follow from
+Tachikoma's process-global terminal I/O, and are enforced or documented
+rather than worked around: the app is **single-session** (one browser at a
+time), and its size is **fixed at connect** from the client's HELLO. See
+`examples/tachikoma_web.jl`.

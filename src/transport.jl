@@ -84,7 +84,7 @@ function session_control! end
 """
 $(SIGNATURES)
 
-Where `s` is in its life, as a [`SessionState.T`](@ref).
+Where `s` is in its life, as a `SessionState.T`.
 """
 function session_state end
 

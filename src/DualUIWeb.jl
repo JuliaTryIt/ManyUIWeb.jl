@@ -49,5 +49,31 @@ export SessionState
 # DualUI frontend
 export WebServer, ServerConfig, WebSocketDriver, Session, DualUIFrontend, serve
 export WebBackend
+# Tachikoma frontend (provided by the extension when Tachikoma is loaded)
+export serve_tachikoma
+
+"""
+$(SIGNATURES)
+
+Serve a Tachikoma app in the browser over this transport.
+
+`factory` is `() -> Tachikoma.Model`, called once to build the app. Returns
+a live [`WebServer`](@ref); `stop!` it or `wait` on it like any other.
+
+This is a stub: the real method lives in the `Tachikoma` package extension
+and appears only once Tachikoma is loaded. It also requires a Tachikoma
+that accepts an `io=` sink (`with_terminal`/`app`); see Tachikoma PR #39.
+
+    using DualUIWeb, Tachikoma
+    serve_tachikoma(() -> MyModel(); port = 8000)
+
+Constraints, all from Tachikoma's process-global terminal I/O: the app is
+**single-session** (one browser at a time; input and stdout capture are
+process-wide), and its size is fixed at connect from the client's HELLO.
+"""
+serve_tachikoma(args...; kwargs...) =
+    error("serve_tachikoma requires Tachikoma to be loaded: add `using " *
+          "Tachikoma`. It also needs a Tachikoma that accepts an `io=` " *
+          "sink (PR #39).")
 
 end # module

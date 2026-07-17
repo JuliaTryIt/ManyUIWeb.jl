@@ -11,6 +11,14 @@ JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 
+[weakdeps]
+Tachikoma = "468859d6-42d8-48b7-8ad9-1d312e0e3b0a"
+
+[extensions]
+# Loaded only when Tachikoma is present. Needs a Tachikoma that accepts an
+# `io=` sink (PR #39); until that is upstream, dev a patched Tachikoma.
+DualUIWebTachikomaExt = "Tachikoma"
+
 [compat]
 Aqua = "0.8"
 DocStringExtensions = "0.9"
