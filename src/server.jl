@@ -527,27 +527,19 @@ function _new_session_id(s::WebServer)::String
 end
 
 """
-The OS entropy pool.
-"""
-const URANDOM = "/dev/urandom"
-
-"""
 32 hex characters of entropy.
 
 A session id is a bearer token: guess it and you get someone else's
 App, so it has to come from a cryptographic source rather than the
 task-local RNG, whose state is recoverable from its own output.
-`Random.RandomDevice` is the tool for that, but `Random` is not in
-`DualUIWeb`'s `[deps]` and `Project.toml` is not this file's to edit, so
-the OS entropy pool is read directly -- which is what `RandomDevice`
-does on this platform anyway. Internal.
+`Random.RandomDevice` is that source, and it is the OS CSPRNG on every
+platform -- `/dev/urandom` on unix, `BCryptGenRandom` on Windows. Do not
+"simplify" this back to reading `/dev/urandom` by hand: that path does
+not exist on Windows, and doing so crashed every session there.
+Internal.
 """
 function _random_hex()::String
-    bytes = Vector{UInt8}(undef, 16)
-    open(URANDOM, "r") do io
-        read!(io, bytes)
-    end
-    return bytes2hex(bytes)
+    return bytes2hex(rand(Random.RandomDevice(), UInt8, 16))
 end
 
 """

@@ -13,6 +13,7 @@ using DualUI
 using DocStringExtensions
 import HTTP
 import JSON3
+import Random
 import Sockets
 
 @template (FUNCTIONS, METHODS, MACROS) = """
