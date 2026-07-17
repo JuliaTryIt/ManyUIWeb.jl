@@ -37,6 +37,13 @@ Pinned `@xterm/addon-fit` version.
 const XTERM_FIT_VERSION = "0.10.0"
 
 """
+Pinned `@xterm/addon-canvas` version. The 2D-canvas renderer, whose custom
+glyphs fill each cell exactly -- block and box-drawing characters render
+solid, where the DOM renderer leaves inter-row gaps.
+"""
+const XTERM_CANVAS_VERSION = "0.7.0"
+
+"""
 CDN origin. Every subresource is https, version-pinned and
 integrity-pinned.
 """
@@ -59,6 +66,12 @@ The pinned fit addon. Defines `window.FitAddon.FitAddon`.
 """
 const XTERM_FIT_JS_URL =
     "$(XTERM_CDN)/@xterm/addon-fit@$(XTERM_FIT_VERSION)/lib/addon-fit.js"
+
+"""
+The pinned canvas renderer addon. Defines `window.CanvasAddon.CanvasAddon`.
+"""
+const XTERM_CANVAS_JS_URL =
+    "$(XTERM_CDN)/@xterm/addon-canvas@$(XTERM_CANVAS_VERSION)/lib/addon-canvas.js"
 
 # ------------------------------------------------- the client contract
 

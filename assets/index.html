@@ -62,6 +62,17 @@
     src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"
     integrity="sha384-iF+jqbuti4XlB64clWgFWYEscb+UnSRv3VgVikGYZu+otNFnSHr7y7NcKfBnGizn"
     crossorigin="anonymous"></script>
+<!-- The Canvas renderer draws box-drawing and block characters as custom
+     glyphs that fill the cell exactly. The default DOM renderer draws them
+     from the font, which leaves a hairline gap between rows and turns a
+     solid █ fill (a sparkline, a gauge) into horizontal stripes. Canvas,
+     not WebGL: a WebGL context that fails to draw (software GL, a
+     blocklisted driver) goes BLACK without throwing, so there is no
+     fallback; the 2D canvas has no such failure mode. -->
+<script
+    src="https://cdn.jsdelivr.net/npm/@xterm/addon-canvas@0.7.0/lib/addon-canvas.js"
+    integrity="sha384-NiQxEwzgZwxfdmonmpBzYd6t4XVlrRhyJyK14uhj/+QxRxLbG5giPTMEk4bL2qhp"
+    crossorigin="anonymous"></script>
 
 <script>
 "use strict";
@@ -132,6 +143,14 @@ function makeTerminal() {
   fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
   term.open(document.getElementById(MOUNT_ID));
+  // Canvas renderer after open() -- it needs the mounted element. If it
+  // ever fails to load, xterm.js stays on the DOM renderer: striped
+  // glyphs, but working.
+  try {
+    if (typeof CanvasAddon !== "undefined") {
+      term.loadAddon(new CanvasAddon.CanvasAddon());
+    }
+  } catch (e) { /* DOM renderer fallback */ }
   fit.fit();
 
   // Keystrokes. xterm.js also routes SGR (1006) mouse reports through
