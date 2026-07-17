@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<!--
+  DualUIWeb client -- EARS 2.4.
+
+  The whole browser half of the bridge: an xterm.js terminal, a
+  WebSocket to the same host, and a reconnect loop.
+
+  Two placeholders are templated by `index_html(cfg)`:
+  `{{TITLE}}` and `{{WS_PATH}}`. Nothing else is dynamic.
+
+  xterm.js is loaded from jsdelivr at a PINNED version with an SRI
+  digest. The three integrity attributes below are the only lines in
+  this file over 80 columns: an SRI digest is one unbreakable token.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css"
+      integrity="sha384-8Xk9wy/gzEDUKrXtrmCFa2bBuK3BpjpDuL/p0SeKQX19Khl/M+lHOgD/CyYf7efP"
+      crossorigin="anonymous">
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #101014;
+    overflow: hidden;
+  }
+  #terminal {
+    position: absolute;
+    inset: 0;
+    padding: 4px;
+  }
+  #reconnect {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    padding: 6px 10px;
+    font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #101014;
+    background: #e0b341;
+    text-align: center;
+  }
+  #reconnect[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div id="reconnect" hidden role="status" aria-live="polite"></div>
+<div id="terminal"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"
+        integrity="sha384-M169f14mRZOXm3hD/v2Ti0ThIT/RnAQagXA9nlE15yHAtrW19gdePJh/HaTzUOe/"
+        crossorigin="anonymous"></script>
+<script
+    src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"
+    integrity="sha384-iF+jqbuti4XlB64clWgFWYEscb+UnSRv3VgVikGYZu+otNFnSHr7y7NcKfBnGizn"
+    crossorigin="anonymous"></script>
+
+<script>
+"use strict";
+
+// --- constants ------------------------------------------------------
+
+var MOUNT_ID = "terminal";
+var NOTICE_ID = "reconnect";
+var WS_PATH = "{{WS_PATH}}";
+var SESSION_KEY = "dualui.session";
+
+// Reconnect backoff: 250ms, doubling, capped at 10s, plus jitter so a
+// server restart does not get a thundering herd of tabs.
+var BACKOFF_BASE_MS = 250;
+var BACKOFF_MAX_MS = 10000;
+
+// --- state ----------------------------------------------------------
+
+var term = null;
+var fit = null;
+var ws = null;
+var closing = false;          // true once the server said "bye"
+var backoff = BACKOFF_BASE_MS;
+var lastSize = "";            // suppresses duplicate resize frames
+var resizeTimer = 0;
+var encoder = new TextEncoder();
+
+// --- session id -----------------------------------------------------
+
+// The id is the CLIENT's, so a dropped socket can resume the same
+// server-side session (X4). sessionStorage, not localStorage: one
+// session per tab, and it dies with the tab.
+function sessionId() {
+  var id = sessionStorage.getItem(SESSION_KEY);
+  if (!id) {
+    id = (crypto && crypto.randomUUID) ? crypto.randomUUID()
+       : String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+    sessionStorage.setItem(SESSION_KEY, id);
+  }
+  return id;
+}
+
+// --- reconnect notice -----------------------------------------------
+
+function notice(text) {
+  var el = document.getElementById(NOTICE_ID);
+  if (!el) { return; }
+  if (text) {
+    el.textContent = text;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
+
+// --- terminal -------------------------------------------------------
+
+function makeTerminal() {
+  term = new Terminal({
+    allowProposedApi: true,
+    convertEol: false,
+    cursorBlink: true,
+    scrollback: 0,
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+    fontSize: 14,
+    theme: { background: "#101014", foreground: "#d8d8dc" }
+  });
+  fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(document.getElementById(MOUNT_ID));
+  fit.fit();
+
+  // Keystrokes. xterm.js also routes SGR (1006) mouse reports through
+  // onData once the app enables tracking, so this one hook carries
+  // both -- already exactly the byte sequences DualUI's input parser
+  // decodes. Send BINARY: the server feeds raw bytes to feed_bytes!.
+  term.onData(function (d) { sendBytes(encoder.encode(d)); });
+
+  // Legacy mouse protocols hand back a binary string, one byte per
+  // char code, which must NOT go through TextEncoder (it would UTF-8
+  // encode bytes >= 0x80 into two bytes).
+  term.onBinary(function (d) {
+    var b = new Uint8Array(d.length);
+    for (var i = 0; i < d.length; i++) { b[i] = d.charCodeAt(i) & 0xff; }
+    sendBytes(b);
+  });
+}
+
+// --- sending --------------------------------------------------------
+
+function sendBytes(bytes) {
+  if (ws && ws.readyState === WebSocket.OPEN) { ws.send(bytes); }
+}
+
+function sendText(text) {
+  if (ws && ws.readyState === WebSocket.OPEN) { ws.send(text); }
+}
+
+// --- size handshake -------------------------------------------------
+
+function pushResize() {
+  if (!fit || !term) { return; }
+  try { fit.fit(); } catch (e) { return; }
+  var key = term.cols + "x" + term.rows;
+  if (key === lastSize) { return; }
+  lastSize = key;
+  sendText(JSON.stringify({ t: "resize", w: term.cols, h: term.rows }));
+}
+
+// Coalesce a drag-resize into one frame per animation-ish tick.
+function scheduleResize() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(pushResize, 60);
+}
+
+// --- control frames -------------------------------------------------
+
+function onControl(text) {
+  var m = null;
+  try { m = JSON.parse(text); } catch (e) { return; }
+  if (!m || typeof m.t !== "string") { return; }
+  if (m.t === "ping") {
+    sendText(JSON.stringify({ t: "pong" }));
+  } else if (m.t === "bye") {
+    // The server terminated this session (X5). Do not resume it.
+    closing = true;
+    sessionStorage.removeItem(SESSION_KEY);
+    notice("Session ended by the server. Reload to start a new one.");
+  }
+}
+
+// --- socket ---------------------------------------------------------
+
+function wsUrl() {
+  var scheme = (location.protocol === "https:") ? "wss://" : "ws://";
+  return scheme + location.host + WS_PATH +
+         "?session=" + encodeURIComponent(sessionId());
+}
+
+function connect() {
+  if (closing) { return; }
+  ws = new WebSocket(wsUrl());
+  ws.binaryType = "arraybuffer";
+
+  ws.onopen = function () {
+    backoff = BACKOFF_BASE_MS;
+    notice("");
+    try { fit.fit(); } catch (e) { /* not laid out yet */ }
+    lastSize = term.cols + "x" + term.rows;
+    // HELLO carries the real size BEFORE the first frame, so the
+    // server never paints one wrong-size screen.
+    sendText(JSON.stringify({
+      t: "hello",
+      w: term.cols,
+      h: term.rows,
+      session: sessionId(),
+      tc: true
+    }));
+    term.focus();
+  };
+
+  ws.onmessage = function (ev) {
+    if (typeof ev.data === "string") {
+      onControl(ev.data);
+    } else {
+      // Every binary frame is raw ANSI: straight into the emulator.
+      term.write(new Uint8Array(ev.data));
+    }
+  };
+
+  ws.onerror = function () { /* onclose always follows */ };
+
+  ws.onclose = function () {
+    ws = null;
+    if (closing) { return; }
+    var wait = backoff + Math.floor(Math.random() * 250);
+    notice("Disconnected. Reconnecting in " +
+           Math.max(1, Math.round(wait / 1000)) + "s...");
+    setTimeout(connect, wait);
+    backoff = Math.min(backoff * 2, BACKOFF_MAX_MS);
+  };
+}
+
+// --- boot -----------------------------------------------------------
+
+window.addEventListener("resize", scheduleResize);
+
+// Catches font loading and container changes that `window.onresize`
+// never fires for.
+if (window.ResizeObserver) {
+  new ResizeObserver(scheduleResize)
+    .observe(document.getElementById(MOUNT_ID));
+}
+
+window.addEventListener("beforeunload", function () {
+  closing = true;
+  if (ws) { ws.close(); }
+});
+
+makeTerminal();
+connect();
+</script>
+</body>
+</html>

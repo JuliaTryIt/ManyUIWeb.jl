@@ -1,0 +1,305 @@
+# examples_tests.jl -- the examples in DualUIWeb/examples/ must keep
+# working.
+#
+# These are not smoke tests. An example that builds but paints a blank
+# screen is exactly the failure worth catching -- the log example did
+# precisely that while being written, because it pinned its scroll
+# before layout had run and ended up scrolled past its own last line.
+# So every testitem here paints into a headless buffer and asserts what
+# is actually IN it.
+#
+# Each example guards its `main()` behind a PROGRAM_FILE check, so
+# including one never starts a server.
+
+"""
+The absolute path of an example, from this test file. Internal.
+"""
+example_path(name) = joinpath(@__DIR__, "..", "examples", name)
+
+"""
+Paint `w` at `sz` and return its rows as strings. Internal.
+"""
+function example_rows(w, sz::DualUI.Size)
+    buf = DualUI.Buffer(sz)
+    DualUI.clear!(buf)
+    DualUI.paint!(buf, w)
+    return [join(String(buf.cells[x, y].content) for x in 1:sz.width)
+            for y in 1:sz.height]
+end
+
+@testitem "examples: gallery shows every widget" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "gallery.jl"))
+
+    ui = gallery_app()
+    apply_stylesheet!(SHEET, ui)
+    layout!(ui, Region(1, 1, 76, 20))
+    buf = Buffer(Size(76, 20))
+    clear!(buf)
+    paint!(buf, ui)
+    screen = join([join(String(buf.cells[x, y].content) for x in 1:76)
+                   for y in 1:20], "\n")
+
+    # One assertion per widget, so a regression names itself.
+    @test occursin("DualUI widget gallery", screen)   # Label
+    @test occursin("Static does not wrap", screen)    # Static
+    @test occursin("press me", screen)                # Button
+    @test occursin("type, then enter", screen)        # TextInput placeholder
+    @test occursin("TextArea", screen)                # TextArea
+    @test occursin("alpha", screen)                   # List
+    @test occursin("Ada", screen)                     # DataTable
+    @test occursin("╭", screen)                       # Container borders
+    # The TextArea's wide text survives the trip.
+    @test occursin("漢字", screen)
+end
+
+@testitem "examples: unicode demo agrees with the width model" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "unicode.jl"))
+
+    # The demo's own table is its assertion: each case declares the
+    # width it must have, and that must be what text_width says.
+    for (text, what, expected) in CASES
+        @test text_width(text) == expected
+    end
+
+    # The cases where Base.textwidth is WRONG are the reason the demo
+    # exists. If these ever agree, either Base changed or we broke.
+    @test text_width("❤️") == 2
+    @test textwidth("❤️") == 1
+    @test text_width("👨‍👩‍👧‍👦") == 2
+    @test textwidth("👨‍👩‍👧‍👦") == 8
+
+    ui = unicode_app()
+    apply_stylesheet!(SHEET, ui)
+    layout!(ui, Region(1, 1, 80, 19))
+    buf = Buffer(Size(80, 19))
+    clear!(buf)
+    paint!(buf, ui)
+    screen = join([join(String(buf.cells[x, y].content) for x in 1:80)
+                   for y in 1:19], "\n")
+    @test occursin("unicode & graphemes", screen)
+    @test occursin("ZWJ family", screen)
+    @test occursin("CJK ideograph", screen)
+end
+
+@testitem "examples: life oscillates a blinker" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "life.jl"))
+
+    b = LifeBoard(24, 5)
+    b.grid = falses(5, 24)
+    b.grid[3, 5:7] .= true              # a horizontal blinker
+    apply_stylesheet!(SHEET, b)
+    layout!(b, Region(1, 1, 24, 6))
+
+    live() = [(i, j) for i in 1:5, j in 1:24 if b.grid[i, j]]
+    @test length(live()) == 3
+
+    step!(b)                            # -> vertical
+    @test b.generation == 1
+    @test b.grid[2, 6] && b.grid[3, 6] && b.grid[4, 6]
+    @test !b.grid[3, 5] && !b.grid[3, 7]
+
+    step!(b)                            # -> horizontal again
+    @test b.grid[3, 5] && b.grid[3, 6] && b.grid[3, 7]
+    @test length(live()) == 3
+end
+
+@testitem "examples: rain falls without growing the tree" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "rain.jl"))
+
+    r = rain_app()
+    apply_stylesheet!(SHEET, r)
+    layout!(r, Region(1, 1, 40, 8))
+    fit!(r, Size(40, 8))
+
+    # One drop per column, and NOT one widget per column.
+    @test length(r.drops) == 40
+    @test isempty(descendants(r))
+
+    for _ in 1:12
+        step!(r)
+    end
+    @test isempty(descendants(r))       # still flat after animating
+
+    buf = Buffer(Size(40, 8))
+    clear!(buf)
+    paint!(buf, r)
+    painted = count(x -> strip(String(buf.cells[x[1], x[2]].content)) != "",
+                    [(x, y) for x in 1:40, y in 1:8])
+    @test painted > 0                   # something actually fell
+
+    # Resizing refits rather than reallocating a widget per column.
+    fit!(r, Size(10, 4))
+    @test length(r.drops) == 10
+end
+
+@testitem "examples: snake steers, eats and dies" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "snake.jl"))
+
+    s = snake_app()
+    apply_stylesheet!(SHEET, s)
+    layout!(s, Region(1, 1, 40, 17))
+
+    @test length(s.body) == 3
+    @test !s.dead
+    @test s.paused                    # it waits rather than hitting a wall
+    dispatch_event!(s, key(Key.SPACE), s)
+    @test !s.paused
+
+    head = s.body[1]
+    step!(s)
+    @test s.body[1] == (head[1] + 1, head[2])   # moved right
+
+    # A real KeyEvent steers it.
+    dispatch_event!(s, key(Key.DOWN), s)
+    @test s.dir == (0, 1)
+    h2 = s.body[1]
+    step!(s)
+    @test s.body[1] == (h2[1], h2[2] + 1)
+
+    # It cannot reverse into itself.
+    dispatch_event!(s, key(Key.UP), s)
+    @test s.dir == (0, 1)
+
+    # Eating grows it.
+    s.food = (s.body[1][1], s.body[1][2] + 1)
+    n = length(s.body)
+    step!(s)
+    @test length(s.body) == n + 1
+    @test s.score == 1
+
+    # SPACE pauses and resumes. The parser emits Key.SPACE for 0x20 --
+    # NOT Key.CHAR(' ') -- and a handler checking only the latter is a
+    # space bar that silently does nothing.
+    @test !s.paused
+    dispatch_event!(s, key(Key.SPACE), s)
+    @test s.paused
+    n2 = length(s.body)
+    head2 = s.body[1]
+    step!(s)
+    @test s.body[1] == head2          # paused means paused
+    dispatch_event!(s, key(Key.SPACE), s)
+    @test !s.paused
+
+    # A wall is fatal.
+    for _ in 1:40
+        step!(s)
+    end
+    @test s.dead
+
+    # ... and r restarts.
+    dispatch_event!(s, key('r'), s)
+    @test !s.dead
+    @test s.score == 0
+end
+
+@testitem "examples: datatable sorts 5000 rows without touching them" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "datatable.jl"))
+
+    ui = table_app()
+    apply_stylesheet!(SHEET, ui)
+    layout!(ui, Region(1, 1, 44, 8))
+    dt = query_one(ui, "#elements")
+
+    @test row_count(dt) == 5000
+    # 5000 rows, zero extra nodes: rows are data.
+    @test isempty(descendants(dt))
+
+    rows_before = copy(dt.rows)
+    sort_by!(dt, 3; dir = SortDir.DESCENDING)
+    @test sort_column(dt) == 3
+    @test sort_direction(dt) === SortDir.DESCENDING
+    # The caller's data is untouched: sorting permutes an index.
+    @test dt.rows == rows_before
+    # The view really is descending by Z.
+    zs = [dt.rows[source_index(dt, k)][3] for k in 1:5]
+    @test issorted(zs; rev = true)
+
+    buf = Buffer(Size(44, 8))
+    clear!(buf)
+    paint!(buf, ui)
+    screen = join([join(String(buf.cells[x, y].content) for x in 1:44)
+                   for y in 1:8], "\n")
+    @test occursin("element", screen)
+    @test occursin("▼", screen)         # the sort indicator
+end
+
+@testitem "examples: dashboard filters its list" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "dashboard.jl"))
+
+    ui = dashboard_app()
+    apply_stylesheet!(SHEET, ui)
+    layout!(ui, Region(1, 1, 34, 9))
+    box = query_one(ui, "#filter")
+    list = query_one(ui, "#langs")
+    hits = query_one(ui, "#hits")
+
+    @test row_count(list) == length(LANGUAGES)
+
+    insert_text!(box, "li")
+    box.on_submit(box)                  # what ENTER calls
+    @test row_count(list) == 4
+    @test list.items == ["Julia", "Elixir", "Common Lisp", "Kotlin"]
+    @test occursin("4 of", hits.text[])
+
+    # Clearing it puts everything back. Cleared by backspacing, the way
+    # a user would: `set_text!` exists for TextArea but NOT TextInput.
+    move_to!(box, typemax(Int))
+    while !isempty(box.text[])
+        backspace!(box)
+    end
+    box.on_submit(box)
+    @test row_count(list) == length(LANGUAGES)
+
+    # The title must not be shrunk away by the list -- this is what
+    # `shrink: 0` in the example's stylesheet buys, and it regressed to
+    # a zero-height label while the example was being written.
+    @test region(query_one(ui, "#title")).height == 1
+end
+
+@testitem "examples: log follows the tail, then lets go" begin
+    using DualUI
+    include(joinpath(@__DIR__, "..", "examples", "scrollpane.jl"))
+
+    ui = log_app()
+    apply_stylesheet!(SHEET, ui)
+    layout!(ui, Region(1, 1, 56, 7))
+    lv = query_one(ui, "#log")
+
+    emit!(lv)                           # first tick after layout pins it
+    @test lv.follow
+    @test scroll_of(lv).y == max_scroll(lv).y
+
+    # Pinned means the NEWEST line is on screen -- the bug this catches
+    # is a view scrolled past its own end, which renders nothing at all.
+    buf = Buffer(Size(56, 7))
+    clear!(buf)
+    paint!(buf, ui)
+    screen = join([join(String(buf.cells[x, y].content) for x in 1:56)
+                   for y in 1:7], "\n")
+    @test occursin(string(lv.seq), screen)
+    @test !isempty(strip(replace(screen, "\n" => "")))
+
+    # Scrolling up by hand drops auto-follow...
+    dispatch_event!(ui, MouseEvent(MouseAction.PRESS, MouseButton.WHEEL_UP,
+                                   2, 4, MOD_NONE), lv)
+    @test !lv.follow
+    # ... and then new lines leave the view exactly where it was.
+    where = scroll_of(lv).y
+    emit!(lv)
+    @test scroll_of(lv).y == where
+
+    # Scrolling back to the bottom picks follow up again.
+    for _ in 1:10
+        dispatch_event!(ui, MouseEvent(MouseAction.PRESS,
+                                       MouseButton.WHEEL_DOWN, 2, 4,
+                                       MOD_NONE), lv)
+    end
+    @test lv.follow
+end
