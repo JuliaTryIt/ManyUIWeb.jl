@@ -16,8 +16,7 @@
 # CONSTRAINTS, both from Tachikoma's process-global terminal I/O:
 #   - SINGLE-SESSION: one browser at a time (input and stdout capture are
 #     process-wide). serve_tachikoma forces multi_session = false.
-#   - Size is FIXED at connect from the client's HELLO; live resize is not
-#     wired (app builds its own Terminal and hands back no handle).
+#   - Resize IS handled live: the app tracks the browser window's size.
 
 using DualUIWeb
 using DualUI: wait, stop!

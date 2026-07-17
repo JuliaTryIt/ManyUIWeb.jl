@@ -173,5 +173,5 @@ This needs a Tachikoma that accepts an `io=` sink (`with_terminal`/`app`) --
 dev a patched Tachikoma until it lands. Two constraints follow from
 Tachikoma's process-global terminal I/O, and are enforced or documented
 rather than worked around: the app is **single-session** (one browser at a
-time), and its size is **fixed at connect** from the client's HELLO. See
+time). Resize is handled live, so the app tracks the browser's size. See
 `examples/tachikoma_web.jl`.

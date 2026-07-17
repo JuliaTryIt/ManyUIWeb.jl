@@ -67,9 +67,10 @@ that accepts an `io=` sink (`with_terminal`/`app`); see Tachikoma PR #39.
     using DualUIWeb, Tachikoma
     serve_tachikoma(() -> MyModel(); port = 8000)
 
-Constraints, all from Tachikoma's process-global terminal I/O: the app is
-**single-session** (one browser at a time; input and stdout capture are
-process-wide), and its size is fixed at connect from the client's HELLO.
+Constraint, from Tachikoma's process-global terminal I/O: the app is
+**single-session** -- one browser at a time, because input and stdout
+capture are process-wide. Resize is handled live, so the app tracks the
+browser's size.
 """
 serve_tachikoma(args...; kwargs...) =
     error("serve_tachikoma requires Tachikoma to be loaded: add `using " *

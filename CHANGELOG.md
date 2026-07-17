@@ -31,8 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loaded when Tachikoma is present). `serve_tachikoma(() -> model; port)`
   runs a Tachikoma Model/view/update app in the browser over this
   transport, input and all. Needs a Tachikoma that accepts an `io=` sink
-  (Tachikoma PR #39). Single-session and fixed-size-at-connect, both from
-  Tachikoma's process-global terminal I/O; see `examples/tachikoma_web.jl`.
+  (Tachikoma PR #39). Single-session (Tachikoma's process-global terminal
+  I/O); resize is handled live so the app tracks the browser's size. See
+  `examples/tachikoma_web.jl`.
 - `WebBackend`, the browser as a `DualUI.Backend`. The same app now runs on
   either target with the backend as the only difference:
   `launch(ui; backend = WebBackend(port = 8000))`. It wraps a

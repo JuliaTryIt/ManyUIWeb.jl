@@ -14,11 +14,13 @@
 # comes from a global `INPUT_IO`, and `app` captures the process's
 # stdout/stderr -- so two Tachikoma apps cannot run in one process without
 # fighting. Hence SINGLE-SESSION: `serve_tachikoma` forces
-# `multi_session = false`. And `app` builds its own `Terminal` internally
-# and hands back no handle, so there is nothing to call `resize!` on: the
-# size is FIXED at connect from the client's HELLO. Both limits are
-# Tachikoma-side; lifting them is upstream work (a per-instance input
-# source, and a resize hook on `app`).
+# `multi_session = false`. Lifting that is upstream work (a per-instance
+# input source).
+#
+# Resize IS handled: `app`'s `on_terminal` hook hands us the Terminal, and
+# a RESIZE control frame `resize!`s it live, so the app always renders at
+# the size xterm.js is actually showing -- without it the client's
+# post-font-load re-fit left every frame drifting.
 module DualUIWebTachikomaExt
 
 using DualUIWeb
@@ -89,6 +91,8 @@ mutable struct TachikomaSession <: AbstractSession
     last_seen::Float64
     w::Int
     h::Int
+    "The running app's Terminal, captured via `on_terminal`, for resizes."
+    terminal::Any
 end
 
 session_id(s::TachikomaSession) = s.id
@@ -105,8 +109,14 @@ function session_attach!(s::TachikomaSession, ws, hello)
         T.INPUT_IO[] = s.instream
         s.task = @async begin
             try
+                # `on_terminal` hands us the Terminal so `session_control!`
+                # can `resize!` it: the client re-fits after its font loads
+                # and on every window change, and without this the app stays
+                # frozen at the connect size while xterm.js grows -- every
+                # line then drifts and the screen turns to noise.
                 T.app(model; io = s.out,
-                      tty_size = (rows = s.h, cols = s.w))
+                      tty_size = (rows = s.h, cols = s.w),
+                      on_terminal = t -> (s.terminal = t))
             catch
                 # A closed sink or dropped input ends the loop; that is the
                 # teardown path, not a failure to report.
@@ -136,9 +146,20 @@ function session_input!(s::TachikomaSession, bytes)
     return length(bytes)
 end
 
-# v1: size is fixed at connect, so RESIZE is accepted and ignored rather
-# than mishandled. PING/PONG is the transport's business, not the app's.
-session_control!(::TachikomaSession, ::DualUIWeb.ControlMessage) = nothing
+# RESIZE re-sizes the running app's Terminal, so the app re-lays-out to
+# match what xterm.js is showing. Safe across tasks: Julia is cooperative,
+# so this runs while the render loop is parked between frames, never
+# mid-draw. A frame that arrives before the app has handed us its Terminal
+# is dropped -- the client re-fits, so another will come. PING/PONG and
+# HELLO are the transport's business, not the app's.
+function session_control!(s::TachikomaSession, m::DualUIWeb.ControlMessage)
+    if m.kind === DualUIWeb.ControlKind.RESIZE && m.width > 0 && m.height > 0
+        s.w, s.h = m.width, m.height
+        t = s.terminal
+        t === nothing || resize!(t, (rows = m.height, cols = m.width))
+    end
+    return nothing
+end
 
 session_state(s::TachikomaSession) = s.state
 session_touch!(s::TachikomaSession) = (s.last_seen = time(); nothing)
@@ -168,7 +189,8 @@ end
 make_session(fe::TachikomaFrontend, id, config) =
     TachikomaSession(id, fe.factory, WSOutIO(), Base.BufferStream(),
                      nothing, SessionState.NEW, 0.0,
-                     config.default_size.width, config.default_size.height)
+                     config.default_size.width, config.default_size.height,
+                     nothing)
 
 # ------------------------------------------------------------ the entry
 
