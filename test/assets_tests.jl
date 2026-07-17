@@ -208,27 +208,31 @@ end
     @test occursin(DualUIWeb.XTERM_VERSION, html)
     @test occursin(DualUIWeb.XTERM_FIT_VERSION, html)
     @test occursin(DualUIWeb.XTERM_CANVAS_VERSION, html)
+    @test occursin(DualUIWeb.XTERM_IMAGE_VERSION, html)
     @test !occursin("@latest", html)
 
     # Served by tag, not vendored as a minified blob.
     @test occursin("<script src=\"", html)
     @test occursin("<link rel=\"stylesheet\"", html)
 
-    # Every remote subresource is integrity-pinned and https. Four now:
-    # xterm.js, its CSS, the fit addon and the canvas renderer.
+    # Every remote subresource is integrity-pinned and https. Five now:
+    # xterm.js, its CSS, the fit addon, the canvas renderer and the SIXEL
+    # image addon.
     @test !occursin("http://cdn", html)
     n_sri = count(_ -> true, eachmatch(r"integrity=\"sha384-", html))
-    @test n_sri == 4
+    @test n_sri == 5
     n_cdn = count(_ -> true, eachmatch(r"https://cdn\.jsdelivr\.net", html))
-    @test n_cdn == 4
-    @test count(_ -> true, eachmatch(r"crossorigin=", html)) == 4
+    @test n_cdn == 5
+    @test count(_ -> true, eachmatch(r"crossorigin=", html)) == 5
 
     @test occursin(DualUIWeb.XTERM_JS_URL, html)
     @test occursin(DualUIWeb.XTERM_CSS_URL, html)
     @test occursin(DualUIWeb.XTERM_FIT_JS_URL, html)
     @test occursin(DualUIWeb.XTERM_CANVAS_JS_URL, html)
+    @test occursin(DualUIWeb.XTERM_IMAGE_JS_URL, html)
     for u in (DualUIWeb.XTERM_JS_URL, DualUIWeb.XTERM_CSS_URL,
-              DualUIWeb.XTERM_FIT_JS_URL, DualUIWeb.XTERM_CANVAS_JS_URL)
+              DualUIWeb.XTERM_FIT_JS_URL, DualUIWeb.XTERM_CANVAS_JS_URL,
+              DualUIWeb.XTERM_IMAGE_JS_URL)
         @test startswith(u, "https://")
     end
 end

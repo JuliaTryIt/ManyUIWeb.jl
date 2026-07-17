@@ -44,6 +44,12 @@ solid, where the DOM renderer leaves inter-row gaps.
 const XTERM_CANVAS_VERSION = "0.7.0"
 
 """
+Pinned `@xterm/addon-image` version. Decodes SIXEL, so a Tachikoma pixel
+pane renders as an image instead of its braille fallback.
+"""
+const XTERM_IMAGE_VERSION = "0.8.0"
+
+"""
 CDN origin. Every subresource is https, version-pinned and
 integrity-pinned.
 """
@@ -72,6 +78,12 @@ The pinned canvas renderer addon. Defines `window.CanvasAddon.CanvasAddon`.
 """
 const XTERM_CANVAS_JS_URL =
     "$(XTERM_CDN)/@xterm/addon-canvas@$(XTERM_CANVAS_VERSION)/lib/addon-canvas.js"
+
+"""
+The pinned SIXEL image addon. Defines `window.ImageAddon.ImageAddon`.
+"""
+const XTERM_IMAGE_JS_URL =
+    "$(XTERM_CDN)/@xterm/addon-image@$(XTERM_IMAGE_VERSION)/lib/addon-image.js"
 
 # ------------------------------------------------- the client contract
 

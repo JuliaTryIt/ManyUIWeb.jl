@@ -97,6 +97,21 @@ end
 
 session_id(s::TachikomaSession) = s.id
 
+"""
+Called once with the running app's Terminal. Captures it for resizes and
+tells Tachikoma the client can read SIXEL -- xterm.js decodes it through the
+image addon -- so a pixel pane (PixelImage, Canvas) renders as real graphics
+instead of the braille fallback. `enter_tui!` has already run and left the
+protocol at `gfx_none` for a remote terminal, so both the Terminal field and
+the global gate are set here. Internal.
+"""
+function _on_terminal!(s::TachikomaSession, t)
+    s.terminal = t
+    t.graphics_protocol = T.gfx_sixel
+    T.GRAPHICS_PROTOCOL[] = T.gfx_sixel
+    return nothing
+end
+
 function session_attach!(s::TachikomaSession, ws, hello)
     s.out.ws = ws
     if hello.width > 0 && hello.height > 0
@@ -116,7 +131,7 @@ function session_attach!(s::TachikomaSession, ws, hello)
                 # line then drifts and the screen turns to noise.
                 T.app(model; io = s.out,
                       tty_size = (rows = s.h, cols = s.w),
-                      on_terminal = t -> (s.terminal = t))
+                      on_terminal = t -> _on_terminal!(s, t))
             catch
                 # A closed sink or dropped input ends the loop; that is the
                 # teardown path, not a failure to report.

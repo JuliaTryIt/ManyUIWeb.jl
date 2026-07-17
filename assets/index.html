@@ -73,6 +73,13 @@
     src="https://cdn.jsdelivr.net/npm/@xterm/addon-canvas@0.7.0/lib/addon-canvas.js"
     integrity="sha384-NiQxEwzgZwxfdmonmpBzYd6t4XVlrRhyJyK14uhj/+QxRxLbG5giPTMEk4bL2qhp"
     crossorigin="anonymous"></script>
+<!-- The image addon decodes SIXEL, so a Tachikoma pixel pane (PixelImage,
+     Canvas) renders as real graphics instead of the braille fallback. The
+     server only emits SIXEL when told the client can read it. -->
+<script
+    src="https://cdn.jsdelivr.net/npm/@xterm/addon-image@0.8.0/lib/addon-image.js"
+    integrity="sha384-c8cp6ttBbOCWdIK+9ah6WF5Z9Kl9UMfuRUneie8t3tsEPIBD3TkSP3e5CyNT22kI"
+    crossorigin="anonymous"></script>
 
 <script>
 "use strict";
@@ -151,6 +158,13 @@ function makeTerminal() {
       term.loadAddon(new CanvasAddon.CanvasAddon());
     }
   } catch (e) { /* DOM renderer fallback */ }
+  // SIXEL decoder, so pixel panes render as images. Harmless when the
+  // server never emits SIXEL.
+  try {
+    if (typeof ImageAddon !== "undefined") {
+      term.loadAddon(new ImageAddon.ImageAddon());
+    }
+  } catch (e) { /* no image support: pixel panes stay as their fallback */ }
   fit.fit();
 
   // Keystrokes. xterm.js also routes SGR (1006) mouse reports through
