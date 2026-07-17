@@ -123,24 +123,21 @@ ServerConfig(; host::Sockets.IPAddr = Sockets.localhost,
 """
 W5. The listener, the session table and the reaper.
 
-`factory::F` is `() -> DualUI.Widget`, PARAMETRIC (a concrete field, no
-boxed closure), and it IS the isolation primitive: one call per
-connection yields a fresh widget tree, which yields a fresh App,
-Channel, Buffer pair and Task.
-
-`() -> Widget`, NOT `(driver) -> App`: user application code must never
-name a driver type. The SAME factory feeds
-`App(factory(), TerminalDriver())` and `serve(factory)`.
+The server is framework-neutral: `frontend::FE` is the only thing that
+knows which UI framework this serves. It is PARAMETRIC (a concrete field,
+no boxed closure), and `make_session(frontend, id, config)` is the
+isolation primitive -- one call per connection mints a fresh, independent
+[`AbstractSession`](@ref). For DualUI that session grows a fresh widget
+tree, App, Channel, Buffer pair and Task; the server never sees any of
+them.
 """
-mutable struct WebServer{F}
-    "Called once per session; returns a fresh widget tree."
-    const factory::F
-    "Shared, immutable."
-    const stylesheet::DualUI.Stylesheet
+mutable struct WebServer{FE<:AbstractFrontend}
+    "The UI framework this serves; the one framework-aware field."
+    const frontend::FE
     "Shared, immutable."
     const config::ServerConfig
     "Session id to session. Guarded by `lock`."
-    const sessions::Dict{String,Session}
+    const sessions::Dict{String,AbstractSession}
     "Guards `sessions`, `server` and `reaper`."
     const lock::ReentrantLock
     "The HTTP listener, once started."
@@ -152,13 +149,26 @@ mutable struct WebServer{F}
 end
 
 """
-A server over `factory`, not yet listening.
+A server over a `frontend`, not yet listening.
 """
-WebServer(factory::F;
+WebServer(frontend::FE;
+          config::ServerConfig = ServerConfig()) where {FE<:AbstractFrontend} =
+    WebServer{FE}(frontend, config, Dict{String,AbstractSession}(),
+                  ReentrantLock(), nothing, nothing, false)
+
+"""
+A server over a DualUI widget `factory`: the back-compatible spelling, and
+still how nearly every caller builds one. Wraps `factory` and `stylesheet`
+in a [`DualUIFrontend`](@ref).
+
+`factory` is `() -> DualUI.Widget`, NOT `(driver) -> App`: application code
+never names a driver type. The SAME factory feeds
+`App(factory(), TerminalDriver())` and `serve(factory)`.
+"""
+WebServer(factory;
           stylesheet::DualUI.Stylesheet = DualUI.STYLESHEET_EMPTY,
-          config::ServerConfig = ServerConfig()) where {F} =
-    WebServer{F}(factory, stylesheet, config, Dict{String,Session}(),
-                 ReentrantLock(), nothing, nothing, false)
+          config::ServerConfig = ServerConfig()) =
+    WebServer(DualUIFrontend(factory, stylesheet); config = config)
 
 """
 W1 / req 2.4. Non-blocking: spawn the async HTTP server task and the
@@ -315,7 +325,7 @@ end
 A snapshot of the live sessions. Safe to iterate while clients come and
 go: it is a copy, not a view onto the table.
 """
-sessions(s::WebServer)::Vector{Session} =
+sessions(s::WebServer)::Vector{AbstractSession} =
     Base.@lock s.lock collect(values(s.sessions))
 
 """
@@ -443,22 +453,27 @@ function handle_ws(s::WebServer, ws)::Nothing
     sess = _acquire!(s, hello.session)
     sess === nothing && return nothing
     # Single-session takeover, and stale-socket reattach, are the same
-    # move: whatever was attached loses the seat to the newcomer.
-    state(sess) === SessionState.RUNNING && detach!(sess)
-    attach!(sess, ws, hello)
+    # move: whatever was attached loses the seat to the newcomer. Every
+    # verb here is the neutral session interface -- this loop names no
+    # framework, which is what lets the same server host DualUI or
+    # Tachikoma.
+    session_state(sess) === SessionState.RUNNING && session_detach!(sess)
+    session_attach!(sess, ws, hello)
     try
         for msg in ws
             if msg isa String
-                handle_control!(sess.driver, msg)   # resize / ping
+                # Decode ONCE, here, so the frontend never touches JSON.
+                m = decode_control(msg)
+                m === nothing || session_control!(sess, m)   # resize / ping
             else
-                DualUI.feed_bytes!(sess.driver, msg)   # W4
+                session_input!(sess, msg)   # W4: raw input bytes
             end
-            sess.last_seen = time()
+            session_touch!(sess)
         end
     catch e
         e isa HTTP.WebSockets.WebSocketError || rethrow()
     finally
-        detach!(sess)   # X4: pause + preserve. NEVER kills.
+        session_detach!(sess)   # X4: pause + preserve. NEVER kills.
     end
     return nothing
 end
@@ -511,7 +526,7 @@ server is full and the client should be turned away.
 Single-session mode ignores the requested id entirely: there is one App,
 and every connection lands on it. Internal.
 """
-function _acquire!(s::WebServer, id::AbstractString)::Union{Nothing,Session}
+function _acquire!(s::WebServer, id::AbstractString)::Union{Nothing,AbstractSession}
     if !s.config.multi_session
         existing = Base.@lock s.lock begin
             isempty(s.sessions) ? nothing : first(values(s.sessions))
@@ -534,13 +549,13 @@ end
 W5. Fresh tree, fresh App, fresh everything. `nothing` when at
 `max_sessions`.
 """
-create_session!(s::WebServer)::Union{Nothing,Session} =
+create_session!(s::WebServer)::Union{Nothing,AbstractSession} =
     Base.@lock s.lock begin
         if length(s.sessions) >= s.config.max_sessions
             nothing
         else
             id = _new_session_id(s)
-            sess = Session(id, s.factory, s.stylesheet, s.config)
+            sess = make_session(s.frontend, id, s.config)
             s.sessions[id] = sess
             sess
         end
@@ -578,22 +593,22 @@ end
 The session with `id`, or `nothing`.
 """
 get_session(s::WebServer,
-            id::AbstractString)::Union{Nothing,Session} =
+            id::AbstractString)::Union{Nothing,AbstractSession} =
     Base.@lock s.lock get(s.sessions, String(id), nothing)
 
 """
 Terminate `sess` and drop it from the table.
 """
-function kill_session!(s::WebServer, sess::Session)::Nothing
+function kill_session!(s::WebServer, sess::AbstractSession)::Nothing
     Base.@lock s.lock begin
-        delete!(s.sessions, sess.id)
+        delete!(s.sessions, session_id(sess))
     end
     _terminate_quietly!(sess)
     return nothing
 end
 
 """
-X5. Kill every session with `is_expired(sess, config.session_timeout,
+X5. Kill every session with `session_expired(sess, config.session_timeout,
 now)`; returns the count reaped.
 
 Calls `GC.gc(false)` ONCE per non-empty batch -- never per session, as a
@@ -604,13 +619,13 @@ single sleep.
 """
 function reap!(s::WebServer, now::Float64 = time())::Int
     doomed = Base.@lock s.lock begin
-        expired = Session[]
+        expired = AbstractSession[]
         for sess in values(s.sessions)
-            is_expired(sess, s.config.session_timeout, now) &&
+            session_expired(sess, s.config.session_timeout, now) &&
                 push!(expired, sess)
         end
         for sess in expired
-            delete!(s.sessions, sess.id)
+            delete!(s.sessions, session_id(sess))
         end
         expired
     end
@@ -627,9 +642,9 @@ Terminate `sess`, swallowing whatever it throws on the way out: one
 stubborn session must not stop the sweep from reaping the rest of the
 batch. Internal.
 """
-function _terminate_quietly!(sess::Session)::Nothing
+function _terminate_quietly!(sess::AbstractSession)::Nothing
     try
-        terminate!(sess)
+        session_terminate!(sess)
     catch
         # A session that will not die politely is still leaving.
     end

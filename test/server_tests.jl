@@ -55,17 +55,19 @@ end
     @test c.min_size === Size(10, 3)
 end
 
-@testitem "server: WebServer is parametric in its factory" begin
+@testitem "server: WebServer is parametric in its frontend" begin
     using DualUIWeb
     using DualUI
 
     f = () -> Container()
     s = WebServer(f)
-    # W5. The factory field is concrete, so no boxed closure sits on the
-    # per-session path.
-    @test s isa WebServer{typeof(f)}
-    @test isconcretetype(fieldtype(typeof(s), :factory))
-    @test s.factory === f
+    # The server is parametric in its FRONTEND, and the frontend holds the
+    # factory concretely -- so no boxed closure sits on the per-session
+    # path, and the server itself names no framework.
+    @test s isa WebServer{<:DualUIFrontend}
+    @test s.frontend isa DualUIFrontend
+    @test isconcretetype(fieldtype(typeof(s.frontend), :factory))
+    @test s.frontend.factory === f
     @test s.server === nothing
     @test s.reaper === nothing
     @test !s.running

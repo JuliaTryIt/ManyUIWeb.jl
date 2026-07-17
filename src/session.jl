@@ -22,7 +22,7 @@ driver and widget tree. Sessions share NOTHING but the immutable
 render loop is as type-stable over a WebSocket as over a TTY. That is
 the parametric `App{D}` decision paying off across a package boundary.
 """
-mutable struct Session
+mutable struct Session <: AbstractSession
     "32 hex chars from a cryptographic RNG."
     const id::String
     "This session's driver; nothing is shared."
@@ -191,3 +191,54 @@ Only a PAUSED session can expire.
 """
 is_expired(s::Session, timeout::Float64, now::Float64 = time())::Bool =
     _is_expired(s.state, s.last_seen, timeout, now)
+
+# --------------------------------------------------- the neutral interface
+#
+# `Session` is the DualUI frontend's session type. Its own verbs (attach!,
+# detach!, state, is_expired, terminate!) predate the transport seam and
+# stay -- the tests and the DualUI path use them directly. These forward
+# the neutral `AbstractSession` interface onto them, so the server can
+# drive a Session without naming DualUI. The one method with real content
+# is `session_input!`, which is the whole reason DualUI is a frontend and
+# not the transport: input becomes DualUI events here, in the driver.
+
+session_id(s::Session)::String = s.id
+session_attach!(s::Session, ws::HTTP.WebSockets.WebSocket,
+                hello::ControlMessage)::Nothing = attach!(s, ws, hello)
+session_detach!(s::Session)::Nothing = detach!(s)
+session_input!(s::Session, bytes::AbstractVector{UInt8})::Int =
+    DualUI.feed_bytes!(s.driver, bytes)
+session_control!(s::Session, m::ControlMessage)::Nothing =
+    handle_control!(s.driver, m)
+session_state(s::Session)::SessionState.T = s.state
+session_touch!(s::Session)::Nothing = (s.last_seen = time(); nothing)
+session_expired(s::Session, timeout::Float64, now::Float64)::Bool =
+    is_expired(s, timeout, now)
+session_terminate!(s::Session; deadline::Float64 = TERMINATE_DEADLINE)::Nothing =
+    terminate!(s; deadline = deadline)
+
+# ----------------------------------------------------------- the frontend
+
+"""
+The DualUI frontend: a widget factory and a stylesheet.
+
+`serve(factory)` builds one of these. `make_session` calls `factory()` once
+per client to grow a fresh widget tree, wraps it in a [`Session`](@ref) over
+a [`WebSocketDriver`](@ref), and the server hosts it. This is what makes
+DualUI "a frontend" rather than the transport itself.
+"""
+struct DualUIFrontend{F} <: AbstractFrontend
+    "Called once per session; returns a fresh widget tree."
+    factory::F
+    "Shared, immutable; the same sheet styles every session."
+    stylesheet::DualUI.Stylesheet
+end
+
+"""
+$(SIGNATURES)
+
+A fresh DualUI [`Session`](@ref): one call to the widget factory, one App,
+one driver, all this client's own.
+"""
+make_session(fe::DualUIFrontend, id::AbstractString, config)::Session =
+    Session(id, fe.factory, fe.stylesheet, config)

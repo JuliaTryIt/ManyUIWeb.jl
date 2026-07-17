@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- The transport is now framework-neutral. The server, the WebSocket loop
+  and the reaper are driven through two new interfaces -- `AbstractSession`
+  (one connected client's app instance) and `AbstractFrontend` (mints one
+  session per connection via `make_session`) -- and name no UI framework.
+  DualUI is now one frontend: `serve` builds a `DualUIFrontend`, and the
+  existing `Session`/`WebSocketDriver` are its session. A second frontend
+  (Tachikoma) ships as a package extension.
+- `WebServer` is parametric in its frontend (`WebServer{<:AbstractFrontend}`),
+  not in a widget factory. It no longer has `factory` or `stylesheet`
+  fields; those moved onto `DualUIFrontend`. `WebServer(factory; stylesheet)`
+  still works and now wraps them in a `DualUIFrontend`, so `serve` is
+  unchanged.
+- `handle_control!(::WebSocketDriver, ...)` gained a `ControlMessage`
+  method; the transport decodes each text frame once and hands the frontend
+  a decoded message rather than JSON.
+
 ### Added
 
 - `WebBackend`, the browser as a `DualUI.Backend`. The same app now runs on

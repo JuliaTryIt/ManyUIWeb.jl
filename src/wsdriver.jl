@@ -318,7 +318,20 @@ DualUI.feed_bytes!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
     DualUI.pump_input!(d.parser, d.chan, b)
 
 """
-Handle a text frame: `decode_control`, then act.
+Handle a text frame from its JSON: `decode_control`, then act. Invalid
+JSON is ignored, never thrown.
+
+This is the string entry point; the transport decodes once and calls the
+[`ControlMessage`](@ref) method directly, so a frontend never re-parses.
+Kept because tests and any caller holding raw wire text still want it.
+"""
+handle_control!(d::WebSocketDriver, json::AbstractString)::Nothing =
+    let m = decode_control(json)
+        m === nothing ? nothing : handle_control!(d, m)
+    end
+
+"""
+Act on an already-decoded control frame.
 
     RESIZE -> `d.size = Size(w, h)`; `DualUI.notify_resize!(d, sz)` --
               the IDENTICAL seam SIGWINCH uses, so E4 needs no
@@ -326,13 +339,9 @@ Handle a text frame: `decode_control`, then act.
     HELLO  -> size and depth update
     PING   -> reply PONG
     else   -> ignore
-
-Invalid JSON is ignored, never thrown.
 """
 function handle_control!(d::WebSocketDriver,
-                         json::AbstractString)::Nothing
-    m = decode_control(json)
-    m === nothing && return nothing
+                         m::ControlMessage)::Nothing
     if m.kind === ControlKind.RESIZE
         (m.width > 0 && m.height > 0) || return nothing
         sz = DualUI.Size(m.width, m.height)
