@@ -1,6 +1,6 @@
 # DualUIWeb
 
-The web bridge for [`DualUI`](../DualUI): run the exact same
+The web bridge for [`DualUI`](https://github.com/s-celles/DualUI.jl): run the exact same
 application in a browser instead of a terminal, with no change to the
 widget tree, the stylesheet, or the application logic.
 
