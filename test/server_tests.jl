@@ -234,9 +234,15 @@ end
         @test port > 0
         @test port != s.config.port
         # And it really is listening, not merely constructed.
+        #
+        # The timeouts are generous on purpose. They exist to stop a wedged
+        # server hanging CI forever, NOT to assert latency: whichever socket
+        # testitem runs first pays for compiling the whole request path
+        # server-side, which can exceed 5s on a cold Windows runner even
+        # though every later request lands in well under a second.
         r = HTTP.get("http://127.0.0.1:$port/healthz";
                      retry = false, status_exception = false,
-                     connect_timeout = 5, readtimeout = 5)
+                     connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
         DualUI.stop!(s)
@@ -254,7 +260,7 @@ end
         port = DualUIWeb.bound_port(s)
         r = HTTP.get("http://127.0.0.1:$port/";
                      retry = false, status_exception = false,
-                     connect_timeout = 5, readtimeout = 5)
+                     connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
         @test startswith(HTTP.header(r, "Content-Type"), "text/html")
         @test !isempty(r.body)
@@ -274,13 +280,13 @@ end
         port = DualUIWeb.bound_port(s)
         r = HTTP.get("http://127.0.0.1:$port/definitely-not-a-route";
                      retry = false, status_exception = false,
-                     connect_timeout = 5, readtimeout = 5)
+                     connect_timeout = 30, readtimeout = 60)
         @test r.status == 404
         # A 404 must not take the listener down with it.
         @test isopen(s)
         ok = HTTP.get("http://127.0.0.1:$port/healthz";
                       retry = false, status_exception = false,
-                      connect_timeout = 5, readtimeout = 5)
+                      connect_timeout = 30, readtimeout = 60)
         @test ok.status == 200
     finally
         DualUI.stop!(s)
@@ -315,7 +321,7 @@ end
         @test port > 0
         r = HTTP.get("http://127.0.0.1:$port/healthz";
                      retry = false, status_exception = false,
-                     connect_timeout = 5, readtimeout = 5)
+                     connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
         DualUI.stop!(s)
@@ -418,7 +424,7 @@ end
         port = DualUIWeb.bound_port(s)
         r = HTTP.get("http://127.0.0.1:$port/healthz";
                      retry = false, status_exception = false,
-                     connect_timeout = 5, readtimeout = 5)
+                     connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
         DualUI.stop!(s)
