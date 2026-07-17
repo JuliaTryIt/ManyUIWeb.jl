@@ -20,6 +20,9 @@
 # 4. The package
 !/Project.toml
 !/src/**/*.jl
+# Package extensions (weakdep-triggered). Declared in Project.toml
+# [extensions]; the file MUST be tracked or the entry dangles on a clone.
+!/ext/**/*.jl
 
 # 5. The client bundle. `_bake_assets` (src/assets.jl) serves every file
 #    in a flat `assets/`, so these mirror its MIME_TYPES table -- including
