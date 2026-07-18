@@ -171,7 +171,7 @@ function session_control!(s::TachikomaSession, m::DualUIWeb.ControlMessage)
     if m.kind === DualUIWeb.ControlKind.RESIZE && m.width > 0 && m.height > 0
         s.w, s.h = m.width, m.height
         t = s.terminal
-        t === nothing || resize!(t, (rows = m.height, cols = m.width))
+        t === nothing || T.set_size!(t, (rows = m.height, cols = m.width))
     end
     return nothing
 end
