@@ -1,58 +1,48 @@
-# ManyUIWeb
+# ManyUIWeb.jl
 
 The web bridge for [`ManyUI`](https://github.com/s-celles/ManyUI.jl): run the exact same
 application in a browser instead of a terminal, with no change to the
-widget tree, the stylesheet, or the application logic.
+widget tree or the application logic.
+
+`ManyUIWeb` provides two distinct Web projections:
+
+### 1. `WebTerminal` (Terminal Emulation)
+Pipes the terminal ANSI byte stream into a `WebSocketDriver` and renders it via `xterm.js` in the browser.
+This gives you a perfect 1-to-1 web clone of the Terminal UI.
+
+### 2. `WebNative` (Native DOM)
+Compiles the `ManyUI.Widget` tree recursively into semantic HTML tags (`<div>`, `<button>`, `<span>`) and serves it over HTTP. Events (like clicks) are sent back to the Julia backend via `fetch` requests, triggering state updates that instantly re-render the DOM.
+This provides a modern, semantic web experience out of the box, styled with CSS.
+
+## Quickstart
 
 ```julia
 using ManyUI, ManyUIWeb
 
-serve(() -> Container(Label("hello from the browser")); port = 8000)
+# Define your model and actions...
+model = MyModel()
+
+# To serve as a WebTerminal:
+ManyUI.launch(model, WebTerminal(); port = 8000)
+
+# To serve as a Native Web App:
+ManyUI.launch(model, WebNative(); port = 8080)
 ```
 
 ## How it works
 
-`ManyUIWeb` implements one thing: a `WebSocketDriver <: ManyUI.Driver`.
-It offloads the terminal-rendering step to a JavaScript terminal
-emulator in the client:
+### WebTerminal
+`ManyUIWeb` implements a `WebSocketDriver <: ManyUI.Driver`.
+It offloads the terminal-rendering step to a JavaScript terminal emulator in the client:
+* the ANSI byte stream ManyUI already produces is piped verbatim into the WebSocket as **binary** frames.
+* keystrokes and mouse events come back as **binary** frames.
+* resize and handshake travel as **text** JSON control frames.
 
-* the ANSI byte stream ManyUI already produces is piped verbatim into
-  the WebSocket as **binary** frames;
-* keystrokes and mouse events come back as **binary** frames and go
-  through the very same `ManyUI.InputParser` a TTY uses;
-* resize and handshake travel as **text** JSON control frames, and a
-  resize funnels into `ManyUI.notify_resize!` -- the identical seam
-  SIGWINCH uses.
-
-The bridge uses only the names in `ManyUI.WEB_BRIDGE_SURFACE`; a test
-asserts it.
-
-## Sessions
-
-Every connection gets its own `Session`: its own widget tree, `App`,
-event channel, buffer pair and task. Sessions share nothing but the
-immutable `Stylesheet` and `ServerConfig`. Isolation comes from the
-factory, `() -> ManyUI.Widget`, called once per session -- so user code
-never names a driver type.
-
-A dropped socket **pauses** a session and preserves its state; only the
-reaper kills it, and only after `session_timeout`.
-
-## Layout
-
-| Path | Responsibility |
-|---|---|
-| `src/protocol.jl` | `ControlKind`, `ControlMessage`, JSON encode/decode |
-| `src/wsdriver.jl` | `WebSocketDriver`: the nine methods, nothing more |
-| `src/session.jl` | `Session`, `attach!`, `detach!`, `is_expired` |
-| `src/assets.jl` | The client bundle and `index_html` |
-| `src/server.jl` | `WebServer{F}`, `serve`, `handle_ws`, `reap!` |
-| `assets/` | `index.html` and the favicon |
-
-The served page pulls xterm.js, its fit addon and its CSS from
-jsdelivr at pinned versions, so **the client needs network access to
-that CDN**. Vendoring them locally would make the page self-contained;
-that is not done today.
+### WebNative
+`WebNative` does not use the `Driver` abstraction. Instead, it hooks directly into the `ManyUI.launch` mechanism, serializing the `ManyUI.Widget` component tree (e.g. `Container`, `Label`, `Button`) into HTML strings. 
+It spins up a lightweight HTTP server using `HTTP.jl` that:
+* Serves the HTML DOM on `GET /`
+* Handles interactions on `POST /dispatch` by dynamically finding the widget in the tree and executing its `on_press` callback.
 
 ## Tests
 
