@@ -1,4 +1,4 @@
-# protocol_tests.jl -- @testitem blocks for DualUIWeb/src/protocol.jl.
+# protocol_tests.jl -- @testitem blocks for ManyUIWeb/src/protocol.jl.
 #
 # W1. The wire protocol between the browser and the session. The
 # hostile-input testitem is the load-bearing one: `decode_control` sits
@@ -6,8 +6,8 @@
 # security property, not a convenience.
 
 @testitem "protocol: ControlMessage keyword defaults" begin
-    using DualUIWeb
-    const P = DualUIWeb
+    using ManyUIWeb
+    const P = ManyUIWeb
 
     m = P.ControlMessage(P.ControlKind.PING)
     @test m.kind === P.ControlKind.PING
@@ -25,9 +25,9 @@
 end
 
 @testitem "protocol: encode_control emits the documented shape" begin
-    using DualUIWeb
+    using ManyUIWeb
     import JSON3
-    const P = DualUIWeb
+    const P = ManyUIWeb
 
     m = P.ControlMessage(P.ControlKind.HELLO; width = 120, height = 40,
                          session = "ab", truecolor = true)
@@ -40,8 +40,8 @@ end
 end
 
 @testitem "protocol: every kind round-trips" begin
-    using DualUIWeb
-    const P = DualUIWeb
+    using ManyUIWeb
+    const P = ManyUIWeb
 
     for k in instances(P.ControlKind.T)
         m = P.ControlMessage(k; width = 80, height = 24,
@@ -57,8 +57,8 @@ end
 end
 
 @testitem "protocol: decode_control never throws on hostile input" begin
-    using DualUIWeb
-    const P = DualUIWeb
+    using ManyUIWeb
+    const P = ManyUIWeb
 
     # A malformed frame must yield `nothing`, never an exception: this
     # runs on bytes an untrusted client chose, and a throw here would
@@ -103,8 +103,8 @@ end
 end
 
 @testitem "protocol: decode_control fills missing fields with defaults" begin
-    using DualUIWeb
-    const P = DualUIWeb
+    using ManyUIWeb
+    const P = ManyUIWeb
 
     m = P.decode_control("{\"t\":\"hello\"}")
     @test m !== nothing

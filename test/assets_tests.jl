@@ -10,13 +10,13 @@
 # on another file's TODO.
 
 @testitem "Assets: index_html is non-empty and mounts xterm" begin
-    using DualUIWeb
+    using ManyUIWeb
     import Sockets
-    cfg = DualUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "DualUI",
-                                 DualUIWeb.DualUI.Size(80, 24),
-                                 DualUIWeb.DualUI.Size(20, 5))
-    html = DualUIWeb.index_html(cfg)
+    cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
+                                 10.0, 64, "ManyUI",
+                                 ManyUIWeb.ManyUI.Size(80, 24),
+                                 ManyUIWeb.ManyUI.Size(20, 5))
+    html = ManyUIWeb.index_html(cfg)
 
     @test html isa String
     @test !isempty(html)
@@ -27,8 +27,8 @@
     @test occursin("</html>", html)
 
     # The mount point the client attaches the Terminal to.
-    @test occursin(DualUIWeb.TERMINAL_MOUNT_ID, html)
-    @test occursin("id=\"$(DualUIWeb.TERMINAL_MOUNT_ID)\"", html)
+    @test occursin(ManyUIWeb.TERMINAL_MOUNT_ID, html)
+    @test occursin("id=\"$(ManyUIWeb.TERMINAL_MOUNT_ID)\"", html)
 
     # xterm.js itself, and the addon that reports cols/rows.
     @test occursin("new Terminal(", html)
@@ -42,17 +42,17 @@
 end
 
 @testitem "Assets: index_html carries the WebSocket bootstrap" begin
-    using DualUIWeb
+    using ManyUIWeb
     import Sockets
-    cfg = DualUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "DualUI",
-                                 DualUIWeb.DualUI.Size(80, 24),
-                                 DualUIWeb.DualUI.Size(20, 5))
-    html = DualUIWeb.index_html(cfg)
+    cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
+                                 10.0, 64, "ManyUI",
+                                 ManyUIWeb.ManyUI.Size(80, 24),
+                                 ManyUIWeb.ManyUI.Size(20, 5))
+    html = ManyUIWeb.index_html(cfg)
 
     # A WebSocket client, pointed at the server's own path.
     @test occursin("new WebSocket(", html)
-    @test occursin(DualUIWeb.WS_PATH, html)
+    @test occursin(ManyUIWeb.WS_PATH, html)
     @test occursin("location.host", html)
 
     # Same-host scheme selection, never a hardcoded ws://.
@@ -80,13 +80,13 @@ end
 end
 
 @testitem "Assets: index_html reconnects with a notice and backoff" begin
-    using DualUIWeb
+    using ManyUIWeb
     import Sockets
-    cfg = DualUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "DualUI",
-                                 DualUIWeb.DualUI.Size(80, 24),
-                                 DualUIWeb.DualUI.Size(20, 5))
-    html = DualUIWeb.index_html(cfg)
+    cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
+                                 10.0, 64, "ManyUI",
+                                 ManyUIWeb.ManyUI.Size(80, 24),
+                                 ManyUIWeb.ManyUI.Size(20, 5))
+    html = ManyUIWeb.index_html(cfg)
 
     # X4's client half: a close is a pause, not a death.
     @test occursin("onclose", html)
@@ -94,7 +94,7 @@ end
     @test occursin("session=", html)
 
     # The user is told, and the retry backs off rather than spinning.
-    @test occursin(DualUIWeb.RECONNECT_NOTICE_ID, html)
+    @test occursin(ManyUIWeb.RECONNECT_NOTICE_ID, html)
     @test occursin("Reconnecting", html)
     @test occursin("setTimeout", html)
     @test occursin("BACKOFF_MAX_MS", html)
@@ -102,14 +102,14 @@ end
 end
 
 @testitem "Assets: index_html templates the configured title" begin
-    using DualUIWeb
+    using ManyUIWeb
     import Sockets
-    mk = t -> DualUIWeb.ServerConfig(Sockets.localhost, 8000, true,
+    mk = t -> ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true,
                                      300.0, 10.0, 64, t,
-                                     DualUIWeb.DualUI.Size(80, 24),
-                                     DualUIWeb.DualUI.Size(20, 5))
+                                     ManyUIWeb.ManyUI.Size(80, 24),
+                                     ManyUIWeb.ManyUI.Size(20, 5))
 
-    html = DualUIWeb.index_html(mk("My Dashboard"))
+    html = ManyUIWeb.index_html(mk("My Dashboard"))
     @test occursin("<title>My Dashboard</title>", html)
 
     # No placeholder survives templating.
@@ -117,21 +117,21 @@ end
     @test !occursin("}}", html)
 
     # Pure: same config in, same bytes out.
-    @test DualUIWeb.index_html(mk("My Dashboard")) == html
+    @test ManyUIWeb.index_html(mk("My Dashboard")) == html
 
     # A different title really changes the output.
-    @test DualUIWeb.index_html(mk("Other")) != html
-    @test occursin("<title>Other</title>", DualUIWeb.index_html(mk("Other")))
+    @test ManyUIWeb.index_html(mk("Other")) != html
+    @test occursin("<title>Other</title>", ManyUIWeb.index_html(mk("Other")))
 
     # A hostile title cannot break out of the document.
-    evil = DualUIWeb.index_html(mk("</title><script>alert(1)</script>"))
+    evil = ManyUIWeb.index_html(mk("</title><script>alert(1)</script>"))
     @test !occursin("<script>alert(1)</script>", evil)
     @test occursin("&lt;script&gt;", evil)
 end
 
 @testitem "Assets: content_type maps every served path" begin
-    using DualUIWeb
-    ct = DualUIWeb.content_type
+    using ManyUIWeb
+    ct = ManyUIWeb.content_type
 
     @test ct("/") == "text/html; charset=utf-8"
     @test ct("/index.html") == "text/html; charset=utf-8"
@@ -161,54 +161,54 @@ end
 end
 
 @testitem "Assets: ASSETS bakes the bundle with its mime types" begin
-    using DualUIWeb
-    @test DualUIWeb.ASSETS isa Dict{String,Tuple{String,Vector{UInt8}}}
-    @test isdir(DualUIWeb.ASSET_DIR)
+    using ManyUIWeb
+    @test ManyUIWeb.ASSETS isa Dict{String,Tuple{String,Vector{UInt8}}}
+    @test isdir(ManyUIWeb.ASSET_DIR)
 
-    @test haskey(DualUIWeb.ASSETS, "/favicon.svg")
-    mime, body = DualUIWeb.ASSETS["/favicon.svg"]
+    @test haskey(ManyUIWeb.ASSETS, "/favicon.svg")
+    mime, body = ManyUIWeb.ASSETS["/favicon.svg"]
     @test mime == "image/svg+xml"
     @test !isempty(body)
     @test occursin("<svg", String(copy(body)))
 
     # Every baked entry is a rooted path whose mime agrees with
     # content_type, and no entry is empty.
-    for (path, (m, b)) in DualUIWeb.ASSETS
+    for (path, (m, b)) in ManyUIWeb.ASSETS
         @test startswith(path, "/")
-        @test m == DualUIWeb.content_type(path)
+        @test m == ManyUIWeb.content_type(path)
         @test !isempty(b)
     end
 
     # The templated page is NOT baked: serving it verbatim would ship
     # `{{TITLE}}` to the browser. `/` goes through `index_html(cfg)`.
-    @test !haskey(DualUIWeb.ASSETS, "/index.html")
+    @test !haskey(ManyUIWeb.ASSETS, "/index.html")
 
     # INDEX_HTML is the raw template; index_html(cfg) is the rendering.
-    @test DualUIWeb.INDEX_HTML isa String
-    @test !isempty(DualUIWeb.INDEX_HTML)
-    @test occursin("{{TITLE}}", DualUIWeb.INDEX_HTML)
+    @test ManyUIWeb.INDEX_HTML isa String
+    @test !isempty(ManyUIWeb.INDEX_HTML)
+    @test occursin("{{TITLE}}", ManyUIWeb.INDEX_HTML)
 
     # CDN mode vendors nothing, but a vendored drop-in is still served.
-    @test DualUIWeb.XTERM_JS isa Vector{UInt8}
-    @test DualUIWeb.XTERM_CSS isa Vector{UInt8}
-    @test DualUIWeb.XTERM_FIT_JS isa Vector{UInt8}
-    @test isempty(DualUIWeb.XTERM_JS) ==
-          !haskey(DualUIWeb.ASSETS, "/xterm.js")
-    @test isempty(DualUIWeb.XTERM_CSS) ==
-          !haskey(DualUIWeb.ASSETS, "/xterm.css")
-    @test isempty(DualUIWeb.XTERM_FIT_JS) ==
-          !haskey(DualUIWeb.ASSETS, "/xterm-addon-fit.js")
+    @test ManyUIWeb.XTERM_JS isa Vector{UInt8}
+    @test ManyUIWeb.XTERM_CSS isa Vector{UInt8}
+    @test ManyUIWeb.XTERM_FIT_JS isa Vector{UInt8}
+    @test isempty(ManyUIWeb.XTERM_JS) ==
+          !haskey(ManyUIWeb.ASSETS, "/xterm.js")
+    @test isempty(ManyUIWeb.XTERM_CSS) ==
+          !haskey(ManyUIWeb.ASSETS, "/xterm.css")
+    @test isempty(ManyUIWeb.XTERM_FIT_JS) ==
+          !haskey(ManyUIWeb.ASSETS, "/xterm-addon-fit.js")
 end
 
 @testitem "Assets: xterm loads from a pinned CDN version" begin
-    using DualUIWeb
-    html = DualUIWeb.INDEX_HTML
+    using ManyUIWeb
+    html = ManyUIWeb.INDEX_HTML
 
     # Pinned, not floating: no `@latest`, no bare package name.
-    @test occursin(DualUIWeb.XTERM_VERSION, html)
-    @test occursin(DualUIWeb.XTERM_FIT_VERSION, html)
-    @test occursin(DualUIWeb.XTERM_CANVAS_VERSION, html)
-    @test occursin(DualUIWeb.XTERM_IMAGE_VERSION, html)
+    @test occursin(ManyUIWeb.XTERM_VERSION, html)
+    @test occursin(ManyUIWeb.XTERM_FIT_VERSION, html)
+    @test occursin(ManyUIWeb.XTERM_CANVAS_VERSION, html)
+    @test occursin(ManyUIWeb.XTERM_IMAGE_VERSION, html)
     @test !occursin("@latest", html)
 
     # Served by tag, not vendored as a minified blob.
@@ -225,14 +225,14 @@ end
     @test n_cdn == 5
     @test count(_ -> true, eachmatch(r"crossorigin=", html)) == 5
 
-    @test occursin(DualUIWeb.XTERM_JS_URL, html)
-    @test occursin(DualUIWeb.XTERM_CSS_URL, html)
-    @test occursin(DualUIWeb.XTERM_FIT_JS_URL, html)
-    @test occursin(DualUIWeb.XTERM_CANVAS_JS_URL, html)
-    @test occursin(DualUIWeb.XTERM_IMAGE_JS_URL, html)
-    for u in (DualUIWeb.XTERM_JS_URL, DualUIWeb.XTERM_CSS_URL,
-              DualUIWeb.XTERM_FIT_JS_URL, DualUIWeb.XTERM_CANVAS_JS_URL,
-              DualUIWeb.XTERM_IMAGE_JS_URL)
+    @test occursin(ManyUIWeb.XTERM_JS_URL, html)
+    @test occursin(ManyUIWeb.XTERM_CSS_URL, html)
+    @test occursin(ManyUIWeb.XTERM_FIT_JS_URL, html)
+    @test occursin(ManyUIWeb.XTERM_CANVAS_JS_URL, html)
+    @test occursin(ManyUIWeb.XTERM_IMAGE_JS_URL, html)
+    for u in (ManyUIWeb.XTERM_JS_URL, ManyUIWeb.XTERM_CSS_URL,
+              ManyUIWeb.XTERM_FIT_JS_URL, ManyUIWeb.XTERM_CANVAS_JS_URL,
+              ManyUIWeb.XTERM_IMAGE_JS_URL)
         @test startswith(u, "https://")
     end
 end

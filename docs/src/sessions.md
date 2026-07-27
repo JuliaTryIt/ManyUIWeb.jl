@@ -1,7 +1,7 @@
 # Sessions
 
 ```@meta
-CurrentModule = DualUIWeb
+CurrentModule = ManyUIWeb
 ```
 
 A session is one browser client's application. In multi-session mode —
@@ -20,8 +20,8 @@ serve(() -> Counter(0); port = 8000)
 ## Lifecycle
 
 ```@example states
-using DualUIWeb
-instances(DualUIWeb.SessionState.T)
+using ManyUIWeb
+instances(ManyUIWeb.SessionState.T)
 ```
 
 | State | Meaning |
@@ -54,7 +54,7 @@ browser's screen is blank, so the diff baseline must be reset rather
 than assumed.
 
 ```@example states
-using DualUIWeb
+using ManyUIWeb
 ServerConfig().session_timeout   # seconds a paused session survives
 ```
 
@@ -115,7 +115,7 @@ rather than throwing, because it sits directly on bytes an untrusted
 client chose.
 
 ```@example proto
-using DualUIWeb
-(DualUIWeb.decode_control("{\"t\":\"resize\",\"w\":100,\"h\":30}"),
- DualUIWeb.decode_control("not json at all"))
+using ManyUIWeb
+(ManyUIWeb.decode_control("{\"t\":\"resize\",\"w\":100,\"h\":30}"),
+ ManyUIWeb.decode_control("not json at all"))
 ```

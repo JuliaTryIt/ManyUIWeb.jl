@@ -15,8 +15,8 @@
 # every client call carries a timeout.
 
 @testitem "server: ServerConfig carries the documented defaults" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import Sockets
 
     c = ServerConfig()
@@ -26,15 +26,15 @@
     @test c.session_timeout == 300.0
     @test c.reap_interval == 10.0
     @test c.max_sessions == 64
-    @test c.title == "DualUI"
+    @test c.title == "ManyUI"
     @test c.default_size === Size(80, 24)
     @test c.min_size === Size(20, 5)
     @test isbitstype(fieldtype(ServerConfig, :default_size))
 end
 
 @testitem "server: every ServerConfig keyword lands in its own field" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import Sockets
 
     # Every value below differs from the default, so a keyword wired to
@@ -56,16 +56,16 @@ end
 end
 
 @testitem "server: WebServer is parametric in its frontend" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
 
     f = () -> Container()
     s = WebServer(f)
     # The server is parametric in its FRONTEND, and the frontend holds the
     # factory concretely -- so no boxed closure sits on the per-session
     # path, and the server itself names no framework.
-    @test s isa WebServer{<:DualUIFrontend}
-    @test s.frontend isa DualUIFrontend
+    @test s isa WebServer{<:ManyUIFrontend}
+    @test s.frontend isa ManyUIFrontend
     @test isconcretetype(fieldtype(typeof(s.frontend), :factory))
     @test s.frontend.factory === f
     @test s.server === nothing
@@ -73,41 +73,41 @@ end
     @test !s.running
     @test isempty(s.sessions)
     @test !isopen(s)
-    @test isempty(DualUIWeb.sessions(s))
+    @test isempty(ManyUIWeb.sessions(s))
 end
 
 @testitem "server: handle_http serves index at root" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     s = WebServer(() -> Container())
     for target in ("/", "/index.html")
-        r = DualUIWeb.handle_http(s, HTTP.Request("GET", target))
+        r = ManyUIWeb.handle_http(s, HTTP.Request("GET", target))
         @test r.status == 200
         @test startswith(HTTP.header(r, "Content-Type"), "text/html")
         @test !isempty(r.body)
         # W2. The root IS `index_html`; the router adds nothing of its
         # own.
-        @test String(r.body) == DualUIWeb.index_html(s.config)
+        @test String(r.body) == ManyUIWeb.index_html(s.config)
     end
 end
 
 @testitem "server: handle_http serves the vendored bundle" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     s = WebServer(() -> Container())
     # The root and the health probe are generated per request, not
     # vendored, so they are not the bundle's to serve.
-    vendored = [p for p in keys(DualUIWeb.ASSETS)
+    vendored = [p for p in keys(ManyUIWeb.ASSETS)
                 if p != "/" && p != "/healthz"]
     # W2 is not satisfiable by an empty bundle.
     @test !isempty(vendored)
     for path in vendored
-        mime, body = DualUIWeb.ASSETS[path]
-        r = DualUIWeb.handle_http(s, HTTP.Request("GET", path))
+        mime, body = ManyUIWeb.ASSETS[path]
+        r = ManyUIWeb.handle_http(s, HTTP.Request("GET", path))
         @test r.status == 200
         @test HTTP.header(r, "Content-Type") == mime
         @test r.body == body
@@ -115,8 +115,8 @@ end
 end
 
 @testitem "server: handle_http 404s an unknown path" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     s = WebServer(() -> Container())
@@ -127,43 +127,43 @@ end
     for target in ("/nope", "/xterm.js.map", "/ws",
                    "/../Project.toml", "/assets/../../etc/passwd",
                    "/index.html/", "/favicon.svg/x")
-        r = DualUIWeb.handle_http(s, HTTP.Request("GET", target))
+        r = ManyUIWeb.handle_http(s, HTTP.Request("GET", target))
         @test r.status == 404
     end
 end
 
 @testitem "server: handle_http refuses a non-GET" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     s = WebServer(() -> Container())
     for method in ("POST", "PUT", "DELETE", "PATCH")
-        r = DualUIWeb.handle_http(s, HTTP.Request(method, "/"))
+        r = ManyUIWeb.handle_http(s, HTTP.Request(method, "/"))
         @test r.status == 405
         @test HTTP.header(r, "Allow") == "GET"
     end
 end
 
 @testitem "server: handle_http ignores the query string when routing" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     s = WebServer(() -> Container())
-    r = DualUIWeb.handle_http(s, HTTP.Request("GET", "/?session=abc"))
+    r = ManyUIWeb.handle_http(s, HTTP.Request("GET", "/?session=abc"))
     @test r.status == 200
-    @test String(r.body) == DualUIWeb.index_html(s.config)
+    @test String(r.body) == ManyUIWeb.index_html(s.config)
 end
 
 @testitem "server: handle_http reports the session count at healthz" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
     import JSON3
 
     s = WebServer(() -> Container(); config = ServerConfig(max_sessions = 7))
-    r = DualUIWeb.handle_http(s, HTTP.Request("GET", "/healthz"))
+    r = ManyUIWeb.handle_http(s, HTTP.Request("GET", "/healthz"))
     @test r.status == 200
     @test startswith(HTTP.header(r, "Content-Type"), "application/json")
     body = JSON3.read(String(r.body))
@@ -173,27 +173,27 @@ end
 end
 
 @testitem "server: url reports the configured port before it binds" begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import Sockets
 
     s = WebServer(() -> Container();
                   config = ServerConfig(port = 8123))
-    @test DualUIWeb.url(s) == "http://127.0.0.1:8123/"
-    @test DualUIWeb.bound_port(s) == 8123
+    @test ManyUIWeb.url(s) == "http://127.0.0.1:8123/"
+    @test ManyUIWeb.bound_port(s) == 8123
     # An IPv6 host has to be bracketed or the URL is unusable.
     v6 = WebServer(() -> Container();
                    config = ServerConfig(host = Sockets.IPv6(1),
                                          port = 8123))
-    @test DualUIWeb.url(v6) == "http://[::1]:8123/"
+    @test ManyUIWeb.url(v6) == "http://[::1]:8123/"
 end
 
 @testitem "server: session ids are 32 unguessable hex chars" begin
-    using DualUIWeb
+    using ManyUIWeb
 
     ids = Set{String}()
     for _ in 1:256
-        id = DualUIWeb._random_hex()
+        id = ManyUIWeb._random_hex()
         @test length(id) == 32
         @test all(c -> c in "0123456789abcdef", id)
         push!(ids, id)
@@ -205,10 +205,10 @@ end
 end
 
 @testitem "server: PortInUseError explains itself" begin
-    using DualUIWeb
+    using ManyUIWeb
     import Sockets
 
-    e = DualUIWeb.PortInUseError(Sockets.localhost, 8000)
+    e = ManyUIWeb.PortInUseError(Sockets.localhost, 8000)
     msg = sprint(showerror, e)
     # The whole point is that the operator reads a sentence, not a libuv
     # errno.
@@ -219,8 +219,8 @@ end
 end
 
 @testitem "server: serve binds port and is non-blocking" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     # W1 / req 2.4. `port = 0` asks the OS for a free ephemeral port.
@@ -232,7 +232,7 @@ end
         @test isopen(s)
         @test s.running
         @test s.server !== nothing
-        port = DualUIWeb.bound_port(s)
+        port = ManyUIWeb.bound_port(s)
         @test port > 0
         @test port != s.config.port
         # And it really is listening, not merely constructed.
@@ -247,39 +247,39 @@ end
                      connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
-        DualUI.stop!(s)
+        ManyUI.stop!(s)
     end
     @test !isopen(s)
 end
 
 @testitem "server: a real GET / returns the html bundle" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     s = serve(() -> Container(); port = 0)
     try
-        port = DualUIWeb.bound_port(s)
+        port = ManyUIWeb.bound_port(s)
         r = HTTP.get("http://127.0.0.1:$port/";
                      retry = false, status_exception = false,
                      connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
         @test startswith(HTTP.header(r, "Content-Type"), "text/html")
         @test !isempty(r.body)
-        @test String(r.body) == DualUIWeb.index_html(s.config)
+        @test String(r.body) == ManyUIWeb.index_html(s.config)
     finally
-        DualUI.stop!(s)
+        ManyUI.stop!(s)
     end
 end
 
 @testitem "server: a real GET of an unknown path 404s" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     s = serve(() -> Container(); port = 0)
     try
-        port = DualUIWeb.bound_port(s)
+        port = ManyUIWeb.bound_port(s)
         r = HTTP.get("http://127.0.0.1:$port/definitely-not-a-route";
                      retry = false, status_exception = false,
                      connect_timeout = 30, readtimeout = 60)
@@ -291,34 +291,34 @@ end
                       connect_timeout = 30, readtimeout = 60)
         @test ok.status == 200
     finally
-        DualUI.stop!(s)
+        ManyUI.stop!(s)
     end
 end
 
 @testitem "server: url reflects the bound port" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
 
     s = serve(() -> Container(); port = 0)
-    port = DualUIWeb.bound_port(s)
+    port = ManyUIWeb.bound_port(s)
     try
-        @test DualUIWeb.url(s) == "http://127.0.0.1:$port/"
+        @test ManyUIWeb.url(s) == "http://127.0.0.1:$port/"
     finally
-        DualUI.stop!(s)
+        ManyUI.stop!(s)
     end
     # Once stopped there is no bound port left to report, so `url` falls
     # back to what was configured.
-    @test DualUIWeb.url(s) == "http://127.0.0.1:0/"
+    @test ManyUIWeb.url(s) == "http://127.0.0.1:0/"
 end
 
 @testitem "server: stop! frees the bound port" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
     import Sockets
 
     s = serve(() -> Container(); port = 0)
-    port = DualUIWeb.bound_port(s)
+    port = ManyUIWeb.bound_port(s)
     try
         @test port > 0
         r = HTTP.get("http://127.0.0.1:$port/healthz";
@@ -326,7 +326,7 @@ end
                      connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
-        DualUI.stop!(s)
+        ManyUI.stop!(s)
     end
     @test !isopen(s)
     @test s.server === nothing
@@ -344,21 +344,21 @@ end
 end
 
 @testitem "server: a busy port reports a clear error" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
 
     incumbent = serve(() -> Container(); port = 0)
     try
-        port = DualUIWeb.bound_port(incumbent)
+        port = ManyUIWeb.bound_port(incumbent)
         loser = WebServer(() -> Container();
                           config = ServerConfig(port = port))
         err = try
-            DualUI.start!(loser)
+            ManyUI.start!(loser)
             nothing
         catch e
             e
         end
-        @test err isa DualUIWeb.PortInUseError
+        @test err isa ManyUIWeb.PortInUseError
         @test err.port == port
         msg = sprint(showerror, err)
         @test occursin(string(port), msg)
@@ -371,36 +371,36 @@ end
         # And it must not have disturbed the incumbent.
         @test isopen(incumbent)
     finally
-        DualUI.stop!(incumbent)
+        ManyUI.stop!(incumbent)
     end
 end
 
 @testitem "server: start! and stop! are idempotent" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
 
     s = WebServer(() -> Container(); config = ServerConfig(port = 0))
     try
-        @test DualUI.start!(s) === s
-        port = DualUIWeb.bound_port(s)
+        @test ManyUI.start!(s) === s
+        port = ManyUIWeb.bound_port(s)
         # A second start must not bind a second listener.
-        @test DualUI.start!(s) === s
-        @test DualUIWeb.bound_port(s) == port
+        @test ManyUI.start!(s) === s
+        @test ManyUIWeb.bound_port(s) == port
         @test isopen(s)
     finally
-        DualUI.stop!(s)
+        ManyUI.stop!(s)
     end
     @test !isopen(s)
     # Stopping twice is a no-op, not a throw -- teardown runs from
     # `finally` blocks that cannot know whether it already ran.
-    @test DualUI.stop!(s) === nothing
-    @test DualUI.stop!(s) === nothing
+    @test ManyUI.stop!(s) === nothing
+    @test ManyUI.stop!(s) === nothing
     @test !isopen(s)
 end
 
 @testitem "server: close forwards to stop!" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
 
     s = serve(() -> Container(); port = 0)
     try
@@ -413,8 +413,8 @@ end
 end
 
 @testitem "server: serve accepts a prebuilt config" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
     cfg = ServerConfig(port = 0, title = "prebuilt", max_sessions = 5)
@@ -423,12 +423,12 @@ end
         @test s.config === cfg
         @test s.config.title == "prebuilt"
         @test isopen(s)
-        port = DualUIWeb.bound_port(s)
+        port = ManyUIWeb.bound_port(s)
         r = HTTP.get("http://127.0.0.1:$port/healthz";
                      retry = false, status_exception = false,
                      connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
-        DualUI.stop!(s)
+        ManyUI.stop!(s)
     end
 end

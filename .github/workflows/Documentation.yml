@@ -24,20 +24,20 @@ jobs:
         with:
           version: '1.12'
       - uses: julia-actions/cache@v2
-      - name: Authenticate to private DualUI.jl
-        # See the identical step in CI.yml. DualUI.jl is private and this
+      - name: Authenticate to private ManyUI.jl
+        # See the identical step in CI.yml. ManyUI.jl is private and this
         # job's GITHUB_TOKEN cannot read it; the doc environment devs it by
         # URL, so the clone needs a read-only PAT.
         #
         # Requires repo secret DUALUI_READ_TOKEN: a fine-grained PAT with
-        # Contents: Read-only on s-celles/DualUI.jl. Delete this step once
-        # DualUI.jl is public or in the General registry.
+        # Contents: Read-only on s-celles/ManyUI.jl. Delete this step once
+        # ManyUI.jl is public or in the General registry.
         env:
           DUALUI_READ_TOKEN: ${{ secrets.DUALUI_READ_TOKEN }}
         shell: bash
         run: |
           if [ -z "$DUALUI_READ_TOKEN" ]; then
-            echo "::error::Secret DUALUI_READ_TOKEN is not set. DualUI.jl is private and cannot be cloned without it."
+            echo "::error::Secret DUALUI_READ_TOKEN is not set. ManyUI.jl is private and cannot be cloned without it."
             exit 1
           fi
           git config --global \
@@ -54,16 +54,16 @@ jobs:
         run: |
           using Pkg
           # docs/Manifest.toml is not committed, so both path deps
-          # (`path = ".."` for DualUIWeb, `path = "../../DualUI"` for the
-          # unregistered DualUI) have to be re-established here. Develop
+          # (`path = ".."` for ManyUIWeb, `path = "../../ManyUI"` for the
+          # unregistered ManyUI) have to be re-established here. Develop
           # them in ONE call so Pkg resolves the pair together -- devving
           # them one at a time makes the first resolve against a registry
-          # that has no DualUI in it.
+          # that has no ManyUI in it.
           #
-          # Remove the URL entry once DualUI is in the General registry.
+          # Remove the URL entry once ManyUI is in the General registry.
           Pkg.develop([
               PackageSpec(path=pwd()),
-              PackageSpec(url="https://github.com/s-celles/DualUI.jl")
+              PackageSpec(url="https://github.com/s-celles/ManyUI.jl")
           ])
           Pkg.instantiate()
       - name: Build documentation
@@ -73,7 +73,7 @@ jobs:
         # make.jl sets `warnonly = false`, so any docs warning fails the job.
         #
         # To enable publishing later:
-        #   1. append deploydocs(repo = "github.com/s-celles/DualUIWeb.jl")
+        #   1. append deploydocs(repo = "github.com/s-celles/ManyUIWeb.jl")
         #      to docs/make.jl, and drop the `remotes = nothing` /
         #      `repolink = nothing` / `edit_link = nothing` overrides, which
         #      are only there because there is no git remote yet;

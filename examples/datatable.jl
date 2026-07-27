@@ -1,6 +1,6 @@
 # datatable.jl -- a sortable table of 5000 rows, in a browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/datatable.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/datatable.jl
 #
 # then open http://127.0.0.1:8000/.
 #
@@ -12,8 +12,8 @@
 # costs the same as it would for five. Try 5_000_000 if you like -- the
 # only thing that grows is the Vector.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 const ELEMENTS = [
     ("Hydrogen", "H", 1, 1.008), ("Helium", "He", 2, 4.003),
@@ -68,14 +68,14 @@ function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve(table_app; port = port, stylesheet = SHEET,
                    title = "DataTable")
-    println("DataTable running at ", DualUIWeb.url(server))
+    println("DataTable running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         wait(server)
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

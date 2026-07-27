@@ -1,13 +1,13 @@
 # transport.jl -- the framework-neutral core.
 #
 # Everything in this file, in protocol.jl and in assets.jl knows nothing
-# about DualUI. The wire is terminal bytes plus JSON control (protocol.jl),
+# about ManyUI. The wire is terminal bytes plus JSON control (protocol.jl),
 # the client is xterm.js (assets.jl), and the server drives whatever
-# satisfies the two interfaces below. DualUI is one such thing -- see
-# `Session` and `DualUIFrontend` -- and Tachikoma is another, in an
+# satisfies the two interfaces below. ManyUI is one such thing -- see
+# `Session` and `ManyUIFrontend` -- and Tachikoma is another, in an
 # extension. Neither is named here.
 #
-# The split is the same one DualUI draws at its `Driver` seam, one layer
+# The split is the same one ManyUI draws at its `Driver` seam, one layer
 # out: a session moves bytes to and from a client and runs an app loop; it
 # never hands the transport a widget, a buffer or a model.
 
@@ -119,7 +119,7 @@ A UI framework, as the transport sees it: a thing that mints one
 [`AbstractSession`](@ref) per connection.
 
 A frontend holds whatever a session needs to be built -- a widget factory
-and stylesheet for DualUI, a model factory for Tachikoma -- and implements
+and stylesheet for ManyUI, a model factory for Tachikoma -- and implements
 the single method [`make_session`](@ref). That is the whole seam: give the
 server a frontend and it can host that framework, with no other change.
 """

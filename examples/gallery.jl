@@ -1,16 +1,16 @@
-# gallery.jl -- every DualUI widget on one page, in a browser.
+# gallery.jl -- every ManyUI widget on one page, in a browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/gallery.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/gallery.jl
 #
 #   tab / shift-tab   move focus between the interactive ones
 #   arrows, wheel     drive whichever has focus
 #
 # This is the conformance page: if a widget renders wrong, it is wrong
 # HERE, visibly, without reading a test. It is also the honest inventory
-# -- what is on this page is what DualUI has.
+# -- what is on this page is what ManyUI has.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 const SHEET = parse_css("""
     #screen  { layout: column; padding: 1; }
@@ -80,7 +80,7 @@ function gallery_app()
     tablebox = Container(tbl; id = :tablebox)
 
     return Container(
-        Label("DualUI widget gallery  --  tab to move focus"; id = :title),
+        Label("ManyUI widget gallery  --  tab to move focus"; id = :title),
         Container(texts, inputs; id = :row1),
         Container(listbox, tablebox; id = :row2),
         status;
@@ -91,15 +91,15 @@ end
 function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve(gallery_app; port = port, stylesheet = SHEET,
-                   title = "DualUI gallery")
-    println("Gallery running at ", DualUIWeb.url(server))
+                   title = "ManyUI gallery")
+    println("Gallery running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         wait(server)
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

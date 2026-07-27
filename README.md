@@ -1,30 +1,30 @@
-# DualUIWeb
+# ManyUIWeb
 
-The web bridge for [`DualUI`](https://github.com/s-celles/DualUI.jl): run the exact same
+The web bridge for [`ManyUI`](https://github.com/s-celles/ManyUI.jl): run the exact same
 application in a browser instead of a terminal, with no change to the
 widget tree, the stylesheet, or the application logic.
 
 ```julia
-using DualUI, DualUIWeb
+using ManyUI, ManyUIWeb
 
 serve(() -> Container(Label("hello from the browser")); port = 8000)
 ```
 
 ## How it works
 
-`DualUIWeb` implements one thing: a `WebSocketDriver <: DualUI.Driver`.
+`ManyUIWeb` implements one thing: a `WebSocketDriver <: ManyUI.Driver`.
 It offloads the terminal-rendering step to a JavaScript terminal
 emulator in the client:
 
-* the ANSI byte stream DualUI already produces is piped verbatim into
+* the ANSI byte stream ManyUI already produces is piped verbatim into
   the WebSocket as **binary** frames;
 * keystrokes and mouse events come back as **binary** frames and go
-  through the very same `DualUI.InputParser` a TTY uses;
+  through the very same `ManyUI.InputParser` a TTY uses;
 * resize and handshake travel as **text** JSON control frames, and a
-  resize funnels into `DualUI.notify_resize!` -- the identical seam
+  resize funnels into `ManyUI.notify_resize!` -- the identical seam
   SIGWINCH uses.
 
-The bridge uses only the names in `DualUI.WEB_BRIDGE_SURFACE`; a test
+The bridge uses only the names in `ManyUI.WEB_BRIDGE_SURFACE`; a test
 asserts it.
 
 ## Sessions
@@ -32,7 +32,7 @@ asserts it.
 Every connection gets its own `Session`: its own widget tree, `App`,
 event channel, buffer pair and task. Sessions share nothing but the
 immutable `Stylesheet` and `ServerConfig`. Isolation comes from the
-factory, `() -> DualUI.Widget`, called once per session -- so user code
+factory, `() -> ManyUI.Widget`, called once per session -- so user code
 never names a driver type.
 
 A dropped socket **pauses** a session and preserves its state; only the
@@ -57,5 +57,5 @@ that is not done today.
 ## Tests
 
 ```julia
-julia --project=DualUIWeb -e 'using Pkg; Pkg.test()'
+julia --project=ManyUIWeb -e 'using Pkg; Pkg.test()'
 ```

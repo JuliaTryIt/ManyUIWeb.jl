@@ -1,69 +1,69 @@
 # transport_tests.jl -- the framework-neutral core.
 #
 # The refactor's whole claim is that the server drives anything satisfying
-# AbstractSession/AbstractFrontend, with no DualUI in sight. The proof is a
+# AbstractSession/AbstractFrontend, with no ManyUI in sight. The proof is a
 # frontend defined HERE, in the test, out of nothing but the interface --
 # if the real server can run it end to end over a socket, the transport is
-# neutral. (DualUIWeb's own Tachikoma extension is the production instance
+# neutral. (ManyUIWeb's own Tachikoma extension is the production instance
 # of exactly this shape.)
 
 @testitem "transport: a mock frontend records what the server delivers" tags=[:socket] begin
-    using DualUIWeb
-    using DualUI
+    using ManyUIWeb
+    using ManyUI
     import HTTP
 
-    # A session that is not DualUI and not Tachikoma: it just records every
+    # A session that is not ManyUI and not Tachikoma: it just records every
     # interface call. Enough to prove the server speaks only the interface.
-    mutable struct RecSession <: DualUIWeb.AbstractSession
+    mutable struct RecSession <: ManyUIWeb.AbstractSession
         id::String
-        state::DualUIWeb.SessionState.T
+        state::ManyUIWeb.SessionState.T
         last_seen::Float64
         input::Vector{Vector{UInt8}}
-        controls::Vector{DualUIWeb.ControlMessage}
+        controls::Vector{ManyUIWeb.ControlMessage}
         attaches::Int
         detaches::Int
     end
 
-    DualUIWeb.session_id(s::RecSession) = s.id
-    function DualUIWeb.session_attach!(s::RecSession, ws, hello)
+    ManyUIWeb.session_id(s::RecSession) = s.id
+    function ManyUIWeb.session_attach!(s::RecSession, ws, hello)
         s.attaches += 1
-        s.state = DualUIWeb.SessionState.RUNNING
+        s.state = ManyUIWeb.SessionState.RUNNING
         nothing
     end
-    function DualUIWeb.session_detach!(s::RecSession)
+    function ManyUIWeb.session_detach!(s::RecSession)
         s.detaches += 1
-        s.state = DualUIWeb.SessionState.PAUSED
+        s.state = ManyUIWeb.SessionState.PAUSED
         nothing
     end
-    DualUIWeb.session_input!(s::RecSession, b) = (push!(s.input, collect(b)); length(b))
-    DualUIWeb.session_control!(s::RecSession, m) = (push!(s.controls, m); nothing)
-    DualUIWeb.session_state(s::RecSession) = s.state
-    DualUIWeb.session_touch!(s::RecSession) = (s.last_seen = 1.0; nothing)
-    DualUIWeb.session_expired(s::RecSession, timeout, now) =
-        s.state === DualUIWeb.SessionState.PAUSED
-    DualUIWeb.session_terminate!(s::RecSession; deadline = 5.0) =
-        (s.state = DualUIWeb.SessionState.DEAD; nothing)
+    ManyUIWeb.session_input!(s::RecSession, b) = (push!(s.input, collect(b)); length(b))
+    ManyUIWeb.session_control!(s::RecSession, m) = (push!(s.controls, m); nothing)
+    ManyUIWeb.session_state(s::RecSession) = s.state
+    ManyUIWeb.session_touch!(s::RecSession) = (s.last_seen = 1.0; nothing)
+    ManyUIWeb.session_expired(s::RecSession, timeout, now) =
+        s.state === ManyUIWeb.SessionState.PAUSED
+    ManyUIWeb.session_terminate!(s::RecSession; deadline = 5.0) =
+        (s.state = ManyUIWeb.SessionState.DEAD; nothing)
     Base.isopen(s::RecSession) =
-        s.state !== DualUIWeb.SessionState.DEAD
+        s.state !== ManyUIWeb.SessionState.DEAD
 
-    struct RecFrontend <: DualUIWeb.AbstractFrontend
+    struct RecFrontend <: ManyUIWeb.AbstractFrontend
         made::Vector{RecSession}
     end
-    function DualUIWeb.make_session(fe::RecFrontend, id, config)
-        s = RecSession(id, DualUIWeb.SessionState.NEW, 0.0,
-                       Vector{UInt8}[], DualUIWeb.ControlMessage[], 0, 0)
+    function ManyUIWeb.make_session(fe::RecFrontend, id, config)
+        s = RecSession(id, ManyUIWeb.SessionState.NEW, 0.0,
+                       Vector{UInt8}[], ManyUIWeb.ControlMessage[], 0, 0)
         push!(fe.made, s)
         return s
     end
 
     # The mock satisfies the interface, provably.
-    @test DualUIWeb.frontend_session_interface(RecSession) == Symbol[]
+    @test ManyUIWeb.frontend_session_interface(RecSession) == Symbol[]
 
     fe = RecFrontend(RecSession[])
-    server = DualUIWeb.WebServer(fe; config = ServerConfig(port = 0))
-    DualUI.start!(server)
+    server = ManyUIWeb.WebServer(fe; config = ServerConfig(port = 0))
+    ManyUI.start!(server)
     try
-        port = DualUIWeb.bound_port(server)
+        port = ManyUIWeb.bound_port(server)
         HTTP.WebSockets.open("ws://127.0.0.1:$port/ws") do ws
             HTTP.WebSockets.send(ws, "{\"t\":\"hello\",\"w\":80,\"h\":24}")
             HTTP.WebSockets.send(ws, UInt8[0x68, 0x69])          # "hi"
@@ -76,23 +76,23 @@
         @test s.attaches == 1
         @test s.detaches == 1                       # the drop paused it
         @test [0x68, 0x69] in s.input               # raw bytes reached the session
-        @test any(m -> m.kind === DualUIWeb.ControlKind.RESIZE &&
+        @test any(m -> m.kind === ManyUIWeb.ControlKind.RESIZE &&
                        m.width == 100 && m.height == 30, s.controls)
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
     end
 end
 
 @testitem "transport: an incomplete frontend is caught by the interface check" begin
-    using DualUIWeb
+    using ManyUIWeb
 
-    struct HalfSession <: DualUIWeb.AbstractSession end
-    DualUIWeb.session_id(::HalfSession) = "x"
+    struct HalfSession <: ManyUIWeb.AbstractSession end
+    ManyUIWeb.session_id(::HalfSession) = "x"
     # everything else is missing
 
-    gaps = DualUIWeb.frontend_session_interface(HalfSession)
+    gaps = ManyUIWeb.frontend_session_interface(HalfSession)
     @test :session_attach! in gaps
     @test :session_input! in gaps
     @test :session_id ∉ gaps                        # the one we defined
-    @test length(gaps) == length(DualUIWeb.REQUIRED_SESSION_METHODS) - 1
+    @test length(gaps) == length(ManyUIWeb.REQUIRED_SESSION_METHODS) - 1
 end

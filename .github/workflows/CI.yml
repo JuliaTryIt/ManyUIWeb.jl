@@ -55,21 +55,21 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - name: Authenticate to private DualUI.jl
-        # DualUI.jl is a PRIVATE repo. This job's default GITHUB_TOKEN is
-        # scoped to DualUIWeb.jl only and cannot read it, so the dev step
+      - name: Authenticate to private ManyUI.jl
+        # ManyUI.jl is a PRIVATE repo. This job's default GITHUB_TOKEN is
+        # scoped to ManyUIWeb.jl only and cannot read it, so the dev step
         # below would fail on an unauthenticated clone. Rewrite github.com
         # URLs to carry a read-only PAT instead.
         #
         # Requires repo secret DUALUI_READ_TOKEN: a fine-grained PAT with
-        # Contents: Read-only on s-celles/DualUI.jl. Delete this step once
-        # DualUI.jl is public or in the General registry.
+        # Contents: Read-only on s-celles/ManyUI.jl. Delete this step once
+        # ManyUI.jl is public or in the General registry.
         env:
           DUALUI_READ_TOKEN: ${{ secrets.DUALUI_READ_TOKEN }}
         shell: bash
         run: |
           if [ -z "$DUALUI_READ_TOKEN" ]; then
-            echo "::error::Secret DUALUI_READ_TOKEN is not set. DualUI.jl is private and cannot be cloned without it."
+            echo "::error::Secret DUALUI_READ_TOKEN is not set. ManyUI.jl is private and cannot be cloned without it."
             exit 1
           fi
           git config --global \
@@ -86,14 +86,14 @@ jobs:
         run: |
           using Pkg
           # Manifest.toml is not committed, and the manifest is the only
-          # place the DualUI dep is resolved (`path = "../DualUI"`, a
-          # sibling checkout that does not exist on a runner). DualUI is
+          # place the ManyUI dep is resolved (`path = "../ManyUI"`, a
+          # sibling checkout that does not exist on a runner). ManyUI is
           # unregistered, so without this step `instantiate` cannot find it
           # at all and buildpkg fails.
           #
-          # Remove this step once DualUI is in the General registry.
+          # Remove this step once ManyUI is in the General registry.
           Pkg.develop([
-              PackageSpec(url="https://github.com/s-celles/DualUI.jl")
+              PackageSpec(url="https://github.com/s-celles/ManyUI.jl")
           ])
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1

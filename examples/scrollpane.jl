@@ -1,6 +1,6 @@
 # scrollpane.jl -- a live log with auto-follow, in a browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/scrollpane.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/scrollpane.jl
 #
 #   the wheel / arrows / pageup / pagedown   scroll
 #   f                                        toggle auto-follow
@@ -10,8 +10,8 @@
 # yanked out from under you. That is one call to `scroll_to!`, decided
 # by comparing the offset against `max_scroll`.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 const LEVELS = [("INFO", rgb(0x7d, 0xd3, 0xfc)),
                 ("WARN", rgb(0xfb, 0xbf, 0x24)),
@@ -32,7 +32,7 @@ const MESSAGES = [
 A log line: a level, a source and a message. Lines are DATA in a
 `List`, so a hundred thousand of them cost one node.
 """
-mutable struct LogView <: DualUI.Widget
+mutable struct LogView <: ManyUI.Widget
     node::WidgetNode
     lines::Vector{String}
     follow::Bool
@@ -42,9 +42,9 @@ end
 LogView() = LogView(WidgetNode(; id = :log, type_name = :LogView,
                                focusable = true), String[], true, 0)
 
-DualUI.measure(::LogView, avail::Size) = avail
+ManyUI.measure(::LogView, avail::Size) = avail
 
-DualUI.content_extent(w::LogView) =
+ManyUI.content_extent(w::LogView) =
     Size(maximum(text_width, w.lines; init = 0), length(w.lines))
 
 """
@@ -77,7 +77,7 @@ function emit!(w::LogView)
     return nothing
 end
 
-function DualUI.render!(w::LogView, buf::AbstractMatrix{Cell})
+function ManyUI.render!(w::LogView, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width <= 0 || height <= 0) && return nothing
     off = scroll_of(w)
@@ -99,7 +99,7 @@ function DualUI.render!(w::LogView, buf::AbstractMatrix{Cell})
     return nothing
 end
 
-function DualUI.on_event!(w::LogView, d::Dispatch{KeyEvent})
+function ManyUI.on_event!(w::LogView, d::Dispatch{KeyEvent})
     e = event(d)
     if e.code === Key.CHAR && e.char == 'f'
         w.follow = !w.follow
@@ -112,7 +112,7 @@ end
 
 # Scrolling away from the bottom by hand drops auto-follow; scrolling
 # back to the bottom picks it up again.
-function DualUI.on_event!(w::LogView, d::Dispatch{MouseEvent})
+function ManyUI.on_event!(w::LogView, d::Dispatch{MouseEvent})
     e = event(d)
     is_scroll(e) || return nothing
     dy = e.button === MouseButton.WHEEL_UP ? -3 : 3
@@ -167,7 +167,7 @@ function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve(log_app; port = port, stylesheet = SHEET,
                    title = "Live log")
-    println("Log running at ", DualUIWeb.url(server))
+    println("Log running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         while true
@@ -182,7 +182,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

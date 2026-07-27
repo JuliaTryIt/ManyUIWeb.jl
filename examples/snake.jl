@@ -1,6 +1,6 @@
 # snake.jl -- the classic game, in a browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/snake.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/snake.jl
 #
 #   arrows    steer
 #   space     pause
@@ -10,8 +10,8 @@
 # tty uses, and reach this widget as ordinary KeyEvents. Nothing here
 # knows a browser is involved.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 const HEAD = Style(; fg = rgb(0xbb, 0xf7, 0xd0), bold = true)
 const BODY = Style(; fg = rgb(0x22, 0xc5, 0x5e))
@@ -22,7 +22,7 @@ const OVER = Style(; fg = rgb(0xfb, 0xbf, 0x24), bold = true)
 """
 The board. The snake is a `Vector` of cells, not a widget per segment.
 """
-mutable struct Snake <: DualUI.Widget
+mutable struct Snake <: ManyUI.Widget
     node::WidgetNode
     body::Vector{Tuple{Int,Int}}   # (x, y), head first
     dir::Tuple{Int,Int}
@@ -42,7 +42,7 @@ function Snake(w::Int = 40, h::Int = 16)
     return s
 end
 
-DualUI.measure(::Snake, avail::Size) = avail
+ManyUI.measure(::Snake, avail::Size) = avail
 
 """Put the food somewhere the snake is not."""
 function place_food!(s::Snake)
@@ -87,7 +87,7 @@ function step!(s::Snake)
     return nothing
 end
 
-function DualUI.render!(s::Snake, buf::AbstractMatrix{Cell})
+function ManyUI.render!(s::Snake, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width < 4 || height < 4) && return nothing
     w = min(s.w, width)
@@ -116,7 +116,7 @@ function DualUI.render!(s::Snake, buf::AbstractMatrix{Cell})
     return nothing
 end
 
-function DualUI.on_event!(s::Snake, d::Dispatch{KeyEvent})
+function ManyUI.on_event!(s::Snake, d::Dispatch{KeyEvent})
     e = event(d)
     moved = true
     # A snake cannot reverse into itself.
@@ -175,7 +175,7 @@ function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve(snake_app; port = port, stylesheet = SHEET,
                    title = "Snake")
-    println("Snake running at ", DualUIWeb.url(server))
+    println("Snake running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         while true
@@ -190,7 +190,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

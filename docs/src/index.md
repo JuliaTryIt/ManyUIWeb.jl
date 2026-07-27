@@ -1,19 +1,19 @@
-# DualUIWeb.jl
+# ManyUIWeb.jl
 
 ```@meta
-CurrentModule = DualUIWeb
+CurrentModule = ManyUIWeb
 ```
 
-Serve a [DualUI](https://github.com/s-celles/DualUI.jl) application in
+Serve a [ManyUI](https://github.com/s-celles/ManyUI.jl) application in
 a web browser, without changing the application.
 
 ```@docs
-DualUIWeb
+ManyUIWeb
 ```
 
 ## How it works
 
-A DualUI application already produces a stream of ANSI escape
+A ManyUI application already produces a stream of ANSI escape
 sequences. Rendering it in a browser does not mean translating it to
 HTML — it means giving those bytes to a terminal emulator that happens
 to run in a browser tab.
@@ -24,10 +24,10 @@ your App ─▶ ANSI bytes ─▶ WebSocket ─▶ xterm.js ─▶ the browser
    └──────── events ◀── ANSI input ◀── WebSocket ◀──────┘
 ```
 
-`WebSocketDriver` implements DualUI's nine-method `Driver` interface
+`WebSocketDriver` implements ManyUI's nine-method `Driver` interface
 over a socket. Outgoing frames are piped straight into the WebSocket;
-incoming payloads are fed to DualUI's input parser and injected into
-the event loop as ordinary events. DualUI itself never learns that any
+incoming payloads are fed to ManyUI's input parser and injected into
+the event loop as ordinary events. ManyUI itself never learns that any
 of this happened, which is why it has no HTTP dependency and a pure
 terminal application never pays for one.
 
@@ -35,8 +35,8 @@ terminal application never pays for one.
 
 ```julia
 using Pkg
-Pkg.develop(path = "path/to/DualUI")
-Pkg.develop(path = "path/to/DualUIWeb")
+Pkg.develop(path = "path/to/ManyUI")
+Pkg.develop(path = "path/to/ManyUIWeb")
 ```
 
 ## Quickstart
@@ -46,7 +46,7 @@ asynchronous HTTP server. It does not block — it hands back a live
 handle:
 
 ```julia
-using DualUI, DualUIWeb
+using ManyUI, ManyUIWeb
 
 server = serve(() -> Container(Label("Hello from the browser!"));
                port = 8000)
@@ -76,10 +76,10 @@ own independent tree and its own application state. See
 ## Styling
 
 A stylesheet is shared across sessions and passed straight through to
-DualUI:
+ManyUI:
 
 ```julia
-using DualUI, DualUIWeb
+using ManyUI, ManyUIWeb
 
 sheet = parse_css("""
     Container { layout: column; padding: 1; }
@@ -94,7 +94,7 @@ server = serve(() -> my_ui(); port = 8000, stylesheet = sheet)
 Anything not given to `serve` directly comes from `ServerConfig`:
 
 ```@example cfg
-using DualUIWeb
+using ManyUIWeb
 cfg = ServerConfig()
 (port = cfg.port, multi_session = cfg.multi_session,
  session_timeout = cfg.session_timeout, max_sessions = cfg.max_sessions,
@@ -109,11 +109,11 @@ Size" overlay — exactly as it would on a small tty.
 ## `launch`: the same app, either target
 
 `serve` is the web-specific entry point and is not going anywhere. But an
-app that runs in a browser is a plain DualUI app, and `launch` lets you say
+app that runs in a browser is a plain ManyUI app, and `launch` lets you say
 so — the backend is the only thing that changes:
 
 ```julia
-using DualUI, DualUIWeb
+using ManyUI, ManyUIWeb
 
 ui() = Container(Label("hello"))
 
@@ -148,12 +148,12 @@ launch(ui; backend = WebBackend(port = 8000),
 `ServerConfig(; title, min_size)` keeps working and keeps meaning what it
 did; an explicit `app::AppConfig` wins over both.
 
-## A neutral transport: DualUI or Tachikoma
+## A neutral transport: ManyUI or Tachikoma
 
 The server, the WebSocket loop and the reaper name no UI framework. They
 drive whatever satisfies two interfaces -- [`AbstractSession`](@ref) (one
 client's app instance) and [`AbstractFrontend`](@ref) (mints one session
-per connection). DualUI is the default frontend; `serve` builds it. Any
+per connection). ManyUI is the default frontend; `serve` builds it. Any
 framework that emits terminal bytes can be another, because xterm.js
 renders terminal bytes and the wire never cared where they came from.
 
@@ -163,7 +163,7 @@ A [Tachikoma](https://github.com/kahliburke/Tachikoma.jl) app runs over the
 same transport, through a frontend that ships as a package extension:
 
 ```julia
-using DualUIWeb, Tachikoma
+using ManyUIWeb, Tachikoma
 
 serve_tachikoma(() -> MyModel(); port = 8000)
 ```

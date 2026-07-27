@@ -1,19 +1,19 @@
-# backend.jl -- WebBackend: the browser, as a DualUI Backend.
+# backend.jl -- WebBackend: the browser, as a ManyUI Backend.
 #
-# This file is the out-of-tree half of DualUI's `launch` seam, and it is
-# deliberately small. DualUI knows nothing about it. It joins by defining
+# This file is the out-of-tree half of ManyUI's `launch` seam, and it is
+# deliberately small. ManyUI knows nothing about it. It joins by defining
 # one type and one method, from another package, with no cooperation from
-# DualUI beyond the abstract type -- which is the same claim
+# ManyUI beyond the abstract type -- which is the same claim
 # `WebSocketDriver` makes about the `Driver` seam, one level up.
 #
 # It does NOT define `make_driver`. That method is for backends that have
 # ONE driver; a web server has one per browser, minted inside `Session`
 # when a client says HELLO, and it cannot know how many it needs until
 # they arrive. So this overrides `launch` itself, which is exactly the
-# escape hatch DualUI's Backend docstring names for multiplexing targets.
+# escape hatch ManyUI's Backend docstring names for multiplexing targets.
 
 """
-The browser, as a `DualUI.Backend`.
+The browser, as a `ManyUI.Backend`.
 
 Wraps a [`ServerConfig`](@ref), so every `serve` keyword works here and
 means the same thing:
@@ -24,7 +24,7 @@ Unlike a terminal, this target multiplexes: each browser that connects
 gets its OWN app, built by calling the factory again. That is why a
 `WebBackend` defines no `make_driver` -- there is no single driver to make.
 """
-struct WebBackend <: DualUI.Backend
+struct WebBackend <: ManyUI.Backend
     "The transport. Every `serve` keyword lives here."
     config::ServerConfig
 end
@@ -45,7 +45,7 @@ $(SIGNATURES)
 
 Serve `factory` in a browser.
 
-Overrides the single-driver `DualUI.launch` path because the web
+Overrides the single-driver `ManyUI.launch` path because the web
 multiplexes: `factory` is called once PER SESSION, not once here.
 
 `config` describes the app and is threaded into every session, so the same
@@ -59,9 +59,9 @@ out. Returns `0`. With `wait = false` it returns the live
 [`WebServer`](@ref), which answers `isopen`/`close`/`wait` like any other
 `launch` handle.
 """
-function DualUI.launch(factory, backend::WebBackend;
-                       config::Union{Nothing,DualUI.AppConfig} = nothing,
-                       stylesheet::DualUI.Stylesheet = DualUI.STYLESHEET_EMPTY,
+function ManyUI.launch(factory, backend::WebBackend;
+                       config::Union{Nothing,ManyUI.AppConfig} = nothing,
+                       stylesheet::ManyUI.Stylesheet = ManyUI.STYLESHEET_EMPTY,
                        wait::Bool = true)
     cfg = config === nothing ? backend.config :
           _with_app_config(backend.config, config)
@@ -74,7 +74,7 @@ function DualUI.launch(factory, backend::WebBackend;
         # example wrote this by hand; `launch` owes them it.
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
     end
     return 0
 end
@@ -84,7 +84,7 @@ $(SIGNATURES)
 
 `cfg` with its app config replaced by `app`. Internal.
 """
-_with_app_config(cfg::ServerConfig, app::DualUI.AppConfig)::ServerConfig =
+_with_app_config(cfg::ServerConfig, app::ManyUI.AppConfig)::ServerConfig =
     ServerConfig(; host = cfg.host, port = cfg.port,
                    multi_session = cfg.multi_session,
                    session_timeout = cfg.session_timeout,
@@ -94,3 +94,14 @@ _with_app_config(cfg::ServerConfig, app::DualUI.AppConfig)::ServerConfig =
                    default_size = cfg.default_size,
                    min_size = cfg.min_size,
                    app = app)
+
+"""
+$(SIGNATURES)
+
+Declarative entry point: launch a generic application `model` onto a `WebTerminal` Projection.
+It automatically sets up the factory to render the widget tree per session.
+"""
+function ManyUI.launch(model, proj::ManyUI.WebTerminal; kwargs...)
+    factory = () -> ManyUI.render(model, proj)
+    return ManyUI.launch(factory, WebBackend(); kwargs...)
+end

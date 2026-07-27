@@ -1,7 +1,7 @@
 # unicode.jl -- wide characters, combining marks and graphemes, in a
 # browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/unicode.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/unicode.jl
 #
 # This is the demo worth looking at closely. A terminal grid is not a
 # string: an emoji or a CJK ideograph occupies TWO cells, a combining
@@ -12,12 +12,12 @@
 # is right. If anything is off by one, it is wrong -- and you can see it
 # without reading a single assertion.
 #
-# `Base.textwidth` gets several of these wrong, which is why DualUI has
+# `Base.textwidth` gets several of these wrong, which is why ManyUI has
 # `text_width` and `grapheme_width` of its own. The last column shows
 # what it would have said.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 """
 Each case: the text, what it is, and what should be true of it.
@@ -96,14 +96,14 @@ function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve(unicode_app; port = port, stylesheet = SHEET,
                    title = "Unicode & graphemes")
-    println("Unicode demo running at ", DualUIWeb.url(server))
+    println("Unicode demo running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         wait(server)
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

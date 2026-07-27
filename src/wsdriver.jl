@@ -1,20 +1,20 @@
-# wsdriver.jl -- W2. `WebSocketDriver <: DualUI.Driver`: the nine
+# wsdriver.jl -- W2. `WebSocketDriver <: ManyUI.Driver`: the nine
 # methods, nothing more.
 #
-# Every method below is a public DualUI generic. Nothing reaches into
-# DualUI internals, and `check_driver_interface(WebSocketDriver) ==
+# Every method below is a public ManyUI generic. Nothing reaches into
+# ManyUI internals, and `check_driver_interface(WebSocketDriver) ==
 # Symbol[]` is a @testitem.
 
 """
-A DualUI driver whose target is a browser: ANSI bytes out over a
-WebSocket, keystrokes back in through the SAME `DualUI.InputParser` a
+A ManyUI driver whose target is a browser: ANSI bytes out over a
+WebSocket, keystrokes back in through the SAME `ManyUI.InputParser` a
 TTY uses.
 """
-mutable struct WebSocketDriver <: DualUI.Driver
+mutable struct WebSocketDriver <: ManyUI.Driver
     "The App's only input."
-    const chan::Channel{DualUI.Event}
+    const chan::Channel{ManyUI.Event}
     "Shared byte parser -- the terminal's parser, verbatim."
-    const parser::DualUI.InputParser
+    const parser::ManyUI.InputParser
     "BACKPRESSURE ONLY. Never the pause mechanism."
     const outbox::Channel{Vector{UInt8}}
     "Staging buffer; `flush!` is the commit point."
@@ -24,9 +24,9 @@ mutable struct WebSocketDriver <: DualUI.Driver
     "The live socket, or `nothing` while detached."
     ws::Union{Nothing,HTTP.WebSockets.WebSocket}
     "Client-reported renderable area."
-    size::DualUI.Size
+    size::ManyUI.Size
     "What the client claims to do."
-    caps::DualUI.DriverCaps
+    caps::ManyUI.DriverCaps
     "True while a socket is attached."
     connected::Bool
     "False once stopped."
@@ -40,18 +40,18 @@ end
 """
 A detached driver: no socket yet, but a live channel and parser.
 """
-function WebSocketDriver(; size::DualUI.Size = DualUI.Size(80, 24),
-                           depth::DualUI.ColorDepth.T =
-                               DualUI.ColorDepth.TRUECOLOR,
+function WebSocketDriver(; size::ManyUI.Size = ManyUI.Size(80, 24),
+                           depth::ManyUI.ColorDepth.T =
+                               ManyUI.ColorDepth.TRUECOLOR,
                            buffer::Int = 256,
                            outbox::Int = 64)::WebSocketDriver
     buffer > 0 || throw(ArgumentError("buffer must be positive"))
     outbox > 0 || throw(ArgumentError("outbox must be positive"))
     # A browser terminal does everything a good TTY does, and unlike one
     # it always has a settable title.
-    caps = DualUI.DriverCaps(; color_depth = depth, title = true)
-    return WebSocketDriver(Channel{DualUI.Event}(buffer),
-                           DualUI.InputParser(),
+    caps = ManyUI.DriverCaps(; color_depth = depth, title = true)
+    return WebSocketDriver(Channel{ManyUI.Event}(buffer),
+                           ManyUI.InputParser(),
                            Channel{Vector{UInt8}}(outbox),
                            IOBuffer(), ReentrantLock(), nothing, size,
                            caps, false, true, false, nothing)
@@ -61,9 +61,9 @@ end
 `caps` with `color_depth` replaced. `DriverCaps` is `isbits`, so this
 rebuilds rather than mutates. Pure. Internal.
 """
-_with_depth(c::DualUI.DriverCaps,
-            depth::DualUI.ColorDepth.T)::DualUI.DriverCaps =
-    DualUI.DriverCaps(depth, c.mouse, c.bracketed_paste, c.focus_events,
+_with_depth(c::ManyUI.DriverCaps,
+            depth::ManyUI.ColorDepth.T)::ManyUI.DriverCaps =
+    ManyUI.DriverCaps(depth, c.mouse, c.bracketed_paste, c.focus_events,
                       c.alt_screen, c.title, c.unicode, c.sync_output)
 
 """
@@ -114,24 +114,24 @@ browser produces nothing at all -- the client's own comment says it is
 waiting ("xterm.js routes SGR (1006) mouse reports through onData once
 the app enables tracking"), and nothing was ever enabling it. Internal.
 """
-function _ws_setup_bytes(caps::DualUI.DriverCaps)::Vector{UInt8}
+function _ws_setup_bytes(caps::ManyUI.DriverCaps)::Vector{UInt8}
     io = IOBuffer()
-    write(io, DualUI.Ansi.CURSOR_HIDE)
-    caps.mouse && write(io, DualUI.Ansi.MOUSE_ON)
-    caps.bracketed_paste && write(io, DualUI.Ansi.PASTE_ON)
-    caps.focus_events && write(io, DualUI.Ansi.FOCUS_ON)
+    write(io, ManyUI.Ansi.CURSOR_HIDE)
+    caps.mouse && write(io, ManyUI.Ansi.MOUSE_ON)
+    caps.bracketed_paste && write(io, ManyUI.Ansi.PASTE_ON)
+    caps.focus_events && write(io, ManyUI.Ansi.FOCUS_ON)
     return take!(io)
 end
 
 """
 The exact reverse of `_ws_setup_bytes`, innermost first. Internal.
 """
-function _ws_teardown_bytes(caps::DualUI.DriverCaps)::Vector{UInt8}
+function _ws_teardown_bytes(caps::ManyUI.DriverCaps)::Vector{UInt8}
     io = IOBuffer()
-    caps.focus_events && write(io, DualUI.Ansi.FOCUS_OFF)
-    caps.bracketed_paste && write(io, DualUI.Ansi.PASTE_OFF)
-    caps.mouse && write(io, DualUI.Ansi.MOUSE_OFF)
-    write(io, DualUI.Ansi.CURSOR_SHOW)
+    caps.focus_events && write(io, ManyUI.Ansi.FOCUS_OFF)
+    caps.bracketed_paste && write(io, ManyUI.Ansi.PASTE_OFF)
+    caps.mouse && write(io, ManyUI.Ansi.MOUSE_OFF)
+    write(io, ManyUI.Ansi.CURSOR_SHOW)
     return take!(io)
 end
 
@@ -143,8 +143,8 @@ Idempotent.
 Does NOT emit the setup sequences: `attach!` does, because a RECONNECT
 calls `attach!` and never `start!`.
 """
-function DualUI.start!(d::WebSocketDriver,
-                       size_hint::Union{Nothing,DualUI.Size} =
+function ManyUI.start!(d::WebSocketDriver,
+                       size_hint::Union{Nothing,ManyUI.Size} =
                            nothing)::Nothing
     lock(d.lock) do
         size_hint === nothing || (d.size = size_hint)
@@ -156,29 +156,29 @@ end
 """
 Stop the pump, close the channels, detach the socket. Idempotent.
 """
-function DualUI.stop!(d::WebSocketDriver)::Nothing
+function ManyUI.stop!(d::WebSocketDriver)::Nothing
     d.open || return nothing
     detach!(d)
     isopen(d.outbox) && close(d.outbox)
     isopen(d.chan) && close(d.chan)
     d.open = false
     d.started = false
-    DualUI.restore!(d)
+    ManyUI.restore!(d)
     return nothing
 end
 
 """
 X3. A no-op: a browser needs nothing undone. Idempotent, never throws.
 """
-function DualUI.restore!(d::WebSocketDriver)::Nothing
+function ManyUI.restore!(d::WebSocketDriver)::Nothing
     # X3. Undo what `start!` turned on, so a client that outlives the
     # session is not left with mouse reporting on and no cursor. MUST
     # NOT throw: this runs inside a `catch`, inside a `finally`, and the
     # socket is usually already gone by the time it does -- a failure to
     # tidy up must never mask the error that caused it.
     try
-        DualUI.emit!(d, _ws_teardown_bytes(d.caps))
-        DualUI.flush!(d)
+        ManyUI.emit!(d, _ws_teardown_bytes(d.caps))
+        ManyUI.flush!(d)
     catch
     end
     return nothing
@@ -188,7 +188,7 @@ end
 W3. Append `b` to `outbuf`; returns the bytes accepted. NEVER touches
 the socket.
 """
-DualUI.emit!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
+ManyUI.emit!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
     lock(() -> write(d.outbuf, b), d.lock)
 
 """
@@ -197,13 +197,13 @@ detached (`ws === nothing`) or when `outbox` is full, it DISCARDS.
 
 Discarding is safe precisely because reattach posts a `RefreshEvent`,
 forcing a full repaint. `outbox` is backpressure ONLY -- it is never
-the pause mechanism. Pausing is `DualUI.pause!(app)`, called explicitly
+the pause mechanism. Pausing is `ManyUI.pause!(app)`, called explicitly
 by `detach!`.
 
 `outbuf` is drained even when the frame is dropped, so a detached
 driver never grows without bound.
 """
-function DualUI.flush!(d::WebSocketDriver)::Nothing
+function ManyUI.flush!(d::WebSocketDriver)::Nothing
     frame = lock(d.lock) do
         position(d.outbuf) == 0 && return nothing
         bytes = take!(d.outbuf)          # drains, attached or not
@@ -217,17 +217,17 @@ end
 """
 The client-reported renderable area.
 """
-DualUI.display_size(d::WebSocketDriver)::DualUI.Size = d.size
+ManyUI.display_size(d::WebSocketDriver)::ManyUI.Size = d.size
 
 """
 What the client claims to do.
 """
-DualUI.capabilities(d::WebSocketDriver)::DualUI.DriverCaps = d.caps
+ManyUI.capabilities(d::WebSocketDriver)::ManyUI.DriverCaps = d.caps
 
 """
 The event channel.
 """
-DualUI.events(d::WebSocketDriver)::Channel{DualUI.Event} = d.chan
+ManyUI.events(d::WebSocketDriver)::Channel{ManyUI.Event} = d.chan
 
 """
 True while the driver can still deliver events. Note that a DETACHED
@@ -241,8 +241,8 @@ Send an OSC 0 title sequence to the client.
 It rides the ordinary byte pipe rather than the socket, so it is
 ordered with respect to the frames around it.
 """
-function DualUI.set_title!(d::WebSocketDriver, s::AbstractString)::Nothing
-    DualUI.emit!(d, codeunits(string("\e]0;", s, "\a")))
+function ManyUI.set_title!(d::WebSocketDriver, s::AbstractString)::Nothing
+    ManyUI.emit!(d, codeunits(string("\e]0;", s, "\a")))
     return nothing
 end
 
@@ -266,10 +266,10 @@ function attach!(d::WebSocketDriver, ws::HTTP.WebSockets.WebSocket,
         d.ws = ws
         d.connected = true
         if hello.width > 0 && hello.height > 0
-            d.size = DualUI.Size(hello.width, hello.height)
+            d.size = ManyUI.Size(hello.width, hello.height)
         end
-        depth = hello.truecolor ? DualUI.ColorDepth.TRUECOLOR :
-                                  DualUI.ColorDepth.ANSI256
+        depth = hello.truecolor ? ManyUI.ColorDepth.TRUECOLOR :
+                                  ManyUI.ColorDepth.ANSI256
         d.caps = _with_depth(d.caps, depth)
         # Publish the task BEFORE it runs: the pump's first act is to
         # take this same lock, so it cannot observe a stale `d.pump`.
@@ -282,8 +282,8 @@ function attach!(d::WebSocketDriver, ws::HTTP.WebSockets.WebSocket,
     # not in `start!`: a reconnect calls `attach!` alone, so setup done
     # at start! would be lost on every reconnection and a resumed
     # session would come back with no mouse.
-    DualUI.emit!(d, _ws_setup_bytes(d.caps))
-    DualUI.flush!(d)
+    ManyUI.emit!(d, _ws_setup_bytes(d.caps))
+    ManyUI.flush!(d)
     return nothing
 end
 
@@ -304,18 +304,18 @@ function detach!(d::WebSocketDriver)::Nothing
 end
 
 # NOTE (contract deviation, reported): `feed_bytes!` is exported by
-# DualUI (headless.jl), so this MUST extend the DualUI generic -- yet
+# ManyUI (headless.jl), so this MUST extend the ManyUI generic -- yet
 # `:feed_bytes!` is absent from the bridge surface tuple in driver.jl,
 # which the "uses only the web bridge surface" guard test checks. The
 # tuple is the thing that needs the fix (`:set_title!` is missing from
 # it too, for the same reason); see the report.
 """
 W4. A binary frame becomes
-`DualUI.pump_input!(d.parser, d.chan, bytes)` -- the SAME parser the
+`ManyUI.pump_input!(d.parser, d.chan, bytes)` -- the SAME parser the
 terminal uses. This one call IS the entire "web input" implementation.
 """
-DualUI.feed_bytes!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
-    DualUI.pump_input!(d.parser, d.chan, b)
+ManyUI.feed_bytes!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
+    ManyUI.pump_input!(d.parser, d.chan, b)
 
 """
 Handle a text frame from its JSON: `decode_control`, then act. Invalid
@@ -333,7 +333,7 @@ handle_control!(d::WebSocketDriver, json::AbstractString)::Nothing =
 """
 Act on an already-decoded control frame.
 
-    RESIZE -> `d.size = Size(w, h)`; `DualUI.notify_resize!(d, sz)` --
+    RESIZE -> `d.size = Size(w, h)`; `ManyUI.notify_resize!(d, sz)` --
               the IDENTICAL seam SIGWINCH uses, so E4 needs no
               web-specific code
     HELLO  -> size and depth update
@@ -344,18 +344,18 @@ function handle_control!(d::WebSocketDriver,
                          m::ControlMessage)::Nothing
     if m.kind === ControlKind.RESIZE
         (m.width > 0 && m.height > 0) || return nothing
-        sz = DualUI.Size(m.width, m.height)
+        sz = ManyUI.Size(m.width, m.height)
         lock(d.lock) do
             d.size = sz
         end
-        DualUI.notify_resize!(d, sz)
+        ManyUI.notify_resize!(d, sz)
     elseif m.kind === ControlKind.HELLO
         lock(d.lock) do
             if m.width > 0 && m.height > 0
-                d.size = DualUI.Size(m.width, m.height)
+                d.size = ManyUI.Size(m.width, m.height)
             end
-            depth = m.truecolor ? DualUI.ColorDepth.TRUECOLOR :
-                                  DualUI.ColorDepth.ANSI256
+            depth = m.truecolor ? ManyUI.ColorDepth.TRUECOLOR :
+                                  ManyUI.ColorDepth.ANSI256
             d.caps = _with_depth(d.caps, depth)
         end
     elseif m.kind === ControlKind.PING

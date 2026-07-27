@@ -1,6 +1,6 @@
-# tachikoma_web.jl -- a Tachikoma app in the browser, over DualUIWeb.
+# tachikoma_web.jl -- a Tachikoma app in the browser, over ManyUIWeb.
 #
-# Runs a Tachikoma Model/view/update app through DualUIWeb's WebSocket
+# Runs a Tachikoma Model/view/update app through ManyUIWeb's WebSocket
 # transport: xterm.js in the browser renders the exact ANSI a terminal
 # would, and keystrokes travel back over the socket.
 #
@@ -18,8 +18,8 @@
 #     process-wide). serve_tachikoma forces multi_session = false.
 #   - Resize IS handled live: the app tracks the browser window's size.
 
-using DualUIWeb
-using DualUI: wait, stop!
+using ManyUIWeb
+using ManyUI: wait, stop!
 using Tachikoma
 const T = Tachikoma
 
@@ -41,7 +41,7 @@ end
 function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve_tachikoma(() -> Counter(); port = port)
-    println("Tachikoma in the browser at ", DualUIWeb.url(server))
+    println("Tachikoma in the browser at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         wait(server)

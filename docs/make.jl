@@ -1,17 +1,17 @@
 using Documenter
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
-DocMeta.setdocmeta!(DualUIWeb, :DocTestSetup, :(using DualUIWeb);
+DocMeta.setdocmeta!(ManyUIWeb, :DocTestSetup, :(using ManyUIWeb);
                     recursive = true)
 
 makedocs(;
-    modules = [DualUIWeb],
-    sitename = "DualUIWeb.jl",
+    modules = [ManyUIWeb],
+    sitename = "ManyUIWeb.jl",
     authors = "Sébastien Celles",
     format = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
-        canonical = "https://s-celles.github.io/DualUIWeb.jl",
+        canonical = "https://s-celles.github.io/ManyUIWeb.jl",
         edit_link = nothing,
         repolink = nothing,
     ),

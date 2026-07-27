@@ -1,11 +1,11 @@
-# DualUIWeb examples
+# ManyUIWeb examples
 
 Run any of these, then open the URL it prints:
 
 ```bash
-julia --project=DualUIWeb DualUIWeb/examples/gallery.jl        # port 8000
-julia --project=DualUIWeb DualUIWeb/examples/unicode.jl   8001
-julia --project=DualUIWeb DualUIWeb/examples/datatable.jl 8002
+julia --project=ManyUIWeb ManyUIWeb/examples/gallery.jl        # port 8000
+julia --project=ManyUIWeb ManyUIWeb/examples/unicode.jl   8001
+julia --project=ManyUIWeb ManyUIWeb/examples/datatable.jl 8002
 ```
 
 Each takes an optional port as its first argument.
@@ -22,11 +22,11 @@ Each takes an optional port as its first argument.
 | `scrollpane.jl` | a live log with auto-follow that lets go when you scroll up |
 
 Start with `gallery.jl` and `unicode.jl`. The first is the honest
-inventory -- what is on that page is what DualUI has. The second is the
+inventory -- what is on that page is what ManyUI has. The second is the
 one that would catch a rendering bug: a terminal grid is not a string,
 and if the columns in that table line up, the width model is right.
 
-## These are DualUI apps, not web apps
+## These are ManyUI apps, not web apps
 
 `serve` points them at a browser; the same code runs on a tty by
 swapping the driver:
@@ -35,7 +35,7 @@ swapping the driver:
 run!(App(gallery_app(), TerminalDriver()))
 ```
 
-`DualUI` has no HTTP dependency and no idea any of this is happening.
+`ManyUI` has no HTTP dependency and no idea any of this is happening.
 
 ## Every tab is its own session
 
@@ -96,7 +96,7 @@ reason.
 ## What is missing, and why
 
 Tachikoma ships 40 demos. Most of them cannot be ported yet, because
-they exercise widgets DualUI does not have:
+they exercise widgets ManyUI does not have:
 
 | Their demos need | Blocked until |
 |:--|:--|

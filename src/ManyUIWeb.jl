@@ -5,15 +5,15 @@ back to an application loop.
 
 The transport is framework-neutral. Its core -- the wire protocol, the
 xterm.js client, and a server driven through the [`AbstractSession`](@ref)
-/ [`AbstractFrontend`](@ref) seam -- names no UI framework. DualUI is one
+/ [`AbstractFrontend`](@ref) seam -- names no UI framework. ManyUI is one
 frontend (the default: `serve`, [`WebSocketDriver`](@ref), [`Session`](@ref)),
-built on the nine-method `DualUI.Driver` seam and nothing beyond
-`DualUI.WEB_BRIDGE_SURFACE`. A Tachikoma frontend ships as a package
+built on the nine-method `ManyUI.Driver` seam and nothing beyond
+`ManyUI.WEB_BRIDGE_SURFACE`. A Tachikoma frontend ships as a package
 extension, loaded when Tachikoma is present.
 """
-module DualUIWeb
+module ManyUIWeb
 
-using DualUI
+using ManyUI
 using DocStringExtensions
 import HTTP
 import JSON3
@@ -39,6 +39,7 @@ include("wsdriver.jl")
 include("session.jl")
 include("server.jl")
 include("backend.jl")
+include("native.jl")
 
 # neutral core
 export AbstractSession, AbstractFrontend, make_session
@@ -46,8 +47,8 @@ export session_id, session_attach!, session_detach!, session_input!
 export session_control!, session_state, session_touch!, session_expired
 export session_terminate!, frontend_session_interface
 export SessionState
-# DualUI frontend
-export WebServer, ServerConfig, WebSocketDriver, Session, DualUIFrontend, serve
+# ManyUI frontend
+export WebServer, ServerConfig, WebSocketDriver, Session, ManyUIFrontend, serve
 export WebBackend
 # Tachikoma frontend (provided by the extension when Tachikoma is loaded)
 export serve_tachikoma
@@ -64,7 +65,7 @@ This is a stub: the real method lives in the `Tachikoma` package extension
 and appears only once Tachikoma is loaded. It also requires a Tachikoma
 that accepts an `io=` sink (`with_terminal`/`app`); see Tachikoma PR #39.
 
-    using DualUIWeb, Tachikoma
+    using ManyUIWeb, Tachikoma
     serve_tachikoma(() -> MyModel(); port = 8000)
 
 Constraint, from Tachikoma's process-global terminal I/O: the app is

@@ -1,6 +1,6 @@
 # rain.jl -- Matrix rain, in a browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/rain.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/rain.jl
 #
 # Falling halfwidth katakana and latin with brightness falloff. Pure
 # character-buffer animation: no widgets below the top one, no layout
@@ -9,8 +9,8 @@
 # The diff earns its keep here. Only the cells that changed are sent, so
 # a mostly-still screen costs almost nothing even at 20 frames a second.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 # Halfwidth katakana: one cell each, unlike their fullwidth cousins.
 const GLYPHS = vcat(collect('ｦ':'ﾝ'), collect('A':'Z'),
@@ -40,7 +40,7 @@ Drop(h::Int) = Drop(rand(-h:0), rand(1:2), rand(4:12), 0)
 """
 The rain. Columns are DATA -- a `Vector{Drop}` -- not one widget each.
 """
-mutable struct Rain <: DualUI.Widget
+mutable struct Rain <: ManyUI.Widget
     node::WidgetNode
     drops::Vector{Drop}
     height::Int
@@ -48,7 +48,7 @@ end
 
 Rain() = Rain(WidgetNode(; id = :rain, type_name = :Rain), Drop[], 24)
 
-DualUI.measure(::Rain, avail::Size) = avail
+ManyUI.measure(::Rain, avail::Size) = avail
 
 """
 Grow or shrink the column set to fit `sz`. Called on resize; a drop per
@@ -85,7 +85,7 @@ function step!(r::Rain)
     return nothing
 end
 
-function DualUI.render!(r::Rain, buf::AbstractMatrix{Cell})
+function ManyUI.render!(r::Rain, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width <= 0 || height <= 0) && return nothing
     for (x, d) in enumerate(r.drops)
@@ -103,7 +103,7 @@ function DualUI.render!(r::Rain, buf::AbstractMatrix{Cell})
 end
 
 # The rain refits itself whenever the window changes.
-function DualUI.on_event!(r::Rain, d::Dispatch{ResizeEvent})
+function ManyUI.on_event!(r::Rain, d::Dispatch{ResizeEvent})
     fit!(r, event(d).size)
     return nothing
 end
@@ -139,7 +139,7 @@ function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve(rain_app; port = port, stylesheet = SHEET,
                    title = "Matrix rain")
-    println("Rain running at ", DualUIWeb.url(server))
+    println("Rain running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         while true
@@ -155,7 +155,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

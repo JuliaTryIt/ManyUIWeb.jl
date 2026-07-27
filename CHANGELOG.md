@@ -13,13 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the reaper are driven through two new interfaces -- `AbstractSession`
   (one connected client's app instance) and `AbstractFrontend` (mints one
   session per connection via `make_session`) -- and name no UI framework.
-  DualUI is now one frontend: `serve` builds a `DualUIFrontend`, and the
+  ManyUI is now one frontend: `serve` builds a `ManyUIFrontend`, and the
   existing `Session`/`WebSocketDriver` are its session. A second frontend
   (Tachikoma) ships as a package extension.
 - `WebServer` is parametric in its frontend (`WebServer{<:AbstractFrontend}`),
   not in a widget factory. It no longer has `factory` or `stylesheet`
-  fields; those moved onto `DualUIFrontend`. `WebServer(factory; stylesheet)`
-  still works and now wraps them in a `DualUIFrontend`, so `serve` is
+  fields; those moved onto `ManyUIFrontend`. `WebServer(factory; stylesheet)`
+  still works and now wraps them in a `ManyUIFrontend`, so `serve` is
   unchanged.
 - `handle_control!(::WebSocketDriver, ...)` gained a `ControlMessage`
   method; the transport decodes each text frame once and hands the frontend
@@ -27,14 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A Tachikoma frontend, as a package extension (`DualUIWebTachikomaExt`,
+- A Tachikoma frontend, as a package extension (`ManyUIWebTachikomaExt`,
   loaded when Tachikoma is present). `serve_tachikoma(() -> model; port)`
   runs a Tachikoma Model/view/update app in the browser over this
   transport, input and all. Needs a Tachikoma that accepts an `io=` sink
   (Tachikoma PR #39). Single-session (Tachikoma's process-global terminal
   I/O); resize is handled live so the app tracks the browser's size. See
   `examples/tachikoma_web.jl`.
-- `WebBackend`, the browser as a `DualUI.Backend`. The same app now runs on
+- `WebBackend`, the browser as a `ManyUI.Backend`. The same app now runs on
   either target with the backend as the only difference:
   `launch(ui; backend = WebBackend(port = 8000))`. It wraps a
   `ServerConfig`, so every `serve` keyword works and means the same thing.

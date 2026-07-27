@@ -18,7 +18,7 @@ One fully independent application instance: its own App, event loop,
 driver and widget tree. Sessions share NOTHING but the immutable
 `Stylesheet` and `ServerConfig`.
 
-`DualUI.App{WebSocketDriver}` is fully CONCRETE -- the per-session
+`ManyUI.App{WebSocketDriver}` is fully CONCRETE -- the per-session
 render loop is as type-stable over a WebSocket as over a TTY. That is
 the parametric `App{D}` decision paying off across a package boundary.
 """
@@ -28,10 +28,10 @@ mutable struct Session <: AbstractSession
     "This session's driver; nothing is shared."
     const driver::WebSocketDriver
     "This session's app; note the concrete parameter."
-    const app::DualUI.App{WebSocketDriver}
+    const app::ManyUI.App{WebSocketDriver}
     "Where the session is in its life."
     state::SessionState.T
-    "The task running `DualUI.run!`."
+    "The task running `ManyUI.run!`."
     task::Union{Nothing,Task}
     "X5. Stamp of the last client contact; the reap clock."
     last_seen::Float64
@@ -50,21 +50,21 @@ const TERMINATE_DEADLINE = 5.0
 # so `config` cannot carry its type annotation here. It is a
 # `ServerConfig`.
 """
-W5. Build a session. `factory` is `() -> DualUI.Widget` and is called
+W5. Build a session. `factory` is `() -> ManyUI.Widget` and is called
 ONCE, here: a fresh tree per session, nothing captured, nothing
 shared.
 """
 function Session(id::AbstractString, factory,
-                 stylesheet::DualUI.Stylesheet,
+                 stylesheet::ManyUI.Stylesheet,
                  config)::Session
     driver = WebSocketDriver(; size = config.default_size)
     # ONE call, and it is the whole isolation story: a fresh tree yields
     # a fresh App, Channel, Buffer pair and Task.
-    root = factory()::DualUI.Widget
+    root = factory()::ManyUI.Widget
     # `config.app` is the whole AppConfig, not a two-field copy of it:
     # building one here from `min_size`/`title` alone silently dropped
     # `diff_gap`, `esc_timeout` and `sync_frames` on every session.
-    app = DualUI.App(root, driver;
+    app = ManyUI.App(root, driver;
                      config = config.app,
                      stylesheet = stylesheet)
     now = time()
@@ -96,8 +96,8 @@ Base.isopen(s::Session)::Bool =
 """
 Attach or REATTACH a socket.
 
-On reattach: `DualUI.resume!(sess.app)` (which implies `invalidate!`)
-AND `DualUI.post!(app, RefreshEvent())`, so the reconnected client
+On reattach: `ManyUI.resume!(sess.app)` (which implies `invalidate!`)
+AND `ManyUI.post!(app, RefreshEvent())`, so the reconnected client
 receives ONE full frame and is instantly consistent -- no replay log.
 Also `empty!(driver.parser)`: a half-parsed CSI from before the drop
 would corrupt the first keystroke after reconnect.
@@ -110,13 +110,13 @@ function attach!(s::Session, ws::HTTP.WebSockets.WebSocket,
     if s.state === SessionState.NEW
         # First client: bring the loop up. `run!` calls `start!` on the
         # driver itself, so the size_hint from HELLO is already in.
-        s.task = DualUI.start!(s.app)
+        s.task = ManyUI.start!(s.app)
     else
         # The reconnected client's screen is blank, so the diff baseline
         # must be reset. `resume!` implies `invalidate!`; the explicit
         # RefreshEvent is what wakes a loop parked on `take!`.
-        DualUI.resume!(s.app)
-        DualUI.post!(s.app, DualUI.RefreshEvent())
+        ManyUI.resume!(s.app)
+        ManyUI.post!(s.app, ManyUI.RefreshEvent())
     end
     s.state = SessionState.RUNNING
     s.last_seen = time()
@@ -124,7 +124,7 @@ function attach!(s::Session, ws::HTTP.WebSockets.WebSocket,
 end
 
 """
-X4. The socket dropped: `detach!(s.driver)`, `DualUI.pause!(s.app)`,
+X4. The socket dropped: `detach!(s.driver)`, `ManyUI.pause!(s.app)`,
 `state = PAUSED`, stamp `last_seen`.
 
 The App, its tree and its state stay RESIDENT. NEVER kills.
@@ -132,14 +132,14 @@ The App, its tree and its state stay RESIDENT. NEVER kills.
 function detach!(s::Session)::Nothing
     isopen(s) || return nothing
     detach!(s.driver)
-    DualUI.pause!(s.app)
+    ManyUI.pause!(s.app)
     s.state = SessionState.PAUSED
     s.last_seen = time()
     return nothing
 end
 
 """
-X5. `DualUI.quit!`, close the driver and channels, `wait(task)` with a
+X5. `ManyUI.quit!`, close the driver and channels, `wait(task)` with a
 deadline, `state = DEAD`.
 
 `deadline` is injectable so the suite never waits seconds for a
@@ -155,11 +155,11 @@ function terminate!(s::Session;
     # exists to serve. The `stop!` below closes the channel, which both
     # ends `_loop!` and unblocks this `put!` (as an InvalidStateException
     # that `post!` swallows).
-    @async DualUI.quit!(s.app)
+    @async ManyUI.quit!(s.app)
     # The floor comes out from under it regardless: `stop!` closes the
     # event channel, which ends `_loop!` even if the QuitEvent never
     # lands.
-    DualUI.stop!(s.driver)
+    ManyUI.stop!(s.driver)
     t = s.task
     if t !== nothing
         # Bounded: a wedged loop must not wedge the reaper.
@@ -194,20 +194,20 @@ is_expired(s::Session, timeout::Float64, now::Float64 = time())::Bool =
 
 # --------------------------------------------------- the neutral interface
 #
-# `Session` is the DualUI frontend's session type. Its own verbs (attach!,
+# `Session` is the ManyUI frontend's session type. Its own verbs (attach!,
 # detach!, state, is_expired, terminate!) predate the transport seam and
-# stay -- the tests and the DualUI path use them directly. These forward
+# stay -- the tests and the ManyUI path use them directly. These forward
 # the neutral `AbstractSession` interface onto them, so the server can
-# drive a Session without naming DualUI. The one method with real content
-# is `session_input!`, which is the whole reason DualUI is a frontend and
-# not the transport: input becomes DualUI events here, in the driver.
+# drive a Session without naming ManyUI. The one method with real content
+# is `session_input!`, which is the whole reason ManyUI is a frontend and
+# not the transport: input becomes ManyUI events here, in the driver.
 
 session_id(s::Session)::String = s.id
 session_attach!(s::Session, ws::HTTP.WebSockets.WebSocket,
                 hello::ControlMessage)::Nothing = attach!(s, ws, hello)
 session_detach!(s::Session)::Nothing = detach!(s)
 session_input!(s::Session, bytes::AbstractVector{UInt8})::Int =
-    DualUI.feed_bytes!(s.driver, bytes)
+    ManyUI.feed_bytes!(s.driver, bytes)
 session_control!(s::Session, m::ControlMessage)::Nothing =
     handle_control!(s.driver, m)
 session_state(s::Session)::SessionState.T = s.state
@@ -220,25 +220,25 @@ session_terminate!(s::Session; deadline::Float64 = TERMINATE_DEADLINE)::Nothing 
 # ----------------------------------------------------------- the frontend
 
 """
-The DualUI frontend: a widget factory and a stylesheet.
+The ManyUI frontend: a widget factory and a stylesheet.
 
 `serve(factory)` builds one of these. `make_session` calls `factory()` once
 per client to grow a fresh widget tree, wraps it in a [`Session`](@ref) over
 a [`WebSocketDriver`](@ref), and the server hosts it. This is what makes
-DualUI "a frontend" rather than the transport itself.
+ManyUI "a frontend" rather than the transport itself.
 """
-struct DualUIFrontend{F} <: AbstractFrontend
+struct ManyUIFrontend{F} <: AbstractFrontend
     "Called once per session; returns a fresh widget tree."
     factory::F
     "Shared, immutable; the same sheet styles every session."
-    stylesheet::DualUI.Stylesheet
+    stylesheet::ManyUI.Stylesheet
 end
 
 """
 $(SIGNATURES)
 
-A fresh DualUI [`Session`](@ref): one call to the widget factory, one App,
+A fresh ManyUI [`Session`](@ref): one call to the widget factory, one App,
 one driver, all this client's own.
 """
-make_session(fe::DualUIFrontend, id::AbstractString, config)::Session =
+make_session(fe::ManyUIFrontend, id::AbstractString, config)::Session =
     Session(id, fe.factory, fe.stylesheet, config)

@@ -1,6 +1,6 @@
 # life.jl -- Conway's Game of Life, in a browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/life.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/life.jl
 #
 # then open http://127.0.0.1:8000/. Every browser tab gets its OWN
 # board: the factory below runs once per client.
@@ -9,14 +9,14 @@
 # `run!(App(LifeBoard(), TerminalDriver()))` -- the application does not
 # know which one it is talking to.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 """
 A Game of Life board. The grid is DATA, not a widget per cell: a
 120x40 board is one node, not 4800.
 """
-mutable struct LifeBoard <: DualUI.Widget
+mutable struct LifeBoard <: ManyUI.Widget
     node::WidgetNode
     grid::Matrix{Bool}
     generation::Int
@@ -28,7 +28,7 @@ function LifeBoard(w::Int = 80, h::Int = 24)
 end
 
 # Take whatever room the layout gives us.
-DualUI.measure(::LifeBoard, avail::Size) = avail
+ManyUI.measure(::LifeBoard, avail::Size) = avail
 
 """
 One generation, in place. Wraps at the edges, so gliders come back
@@ -57,7 +57,7 @@ end
 const ALIVE = Style(; fg = rgb(0x7d, 0xd3, 0xfc))
 const HUD = Style(; fg = rgb(0x94, 0xa3, 0xb8))
 
-function DualUI.render!(b::LifeBoard, buf::AbstractMatrix{Cell})
+function ManyUI.render!(b::LifeBoard, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width <= 0 || height <= 0) && return nothing
     h, w = size(b.grid)
@@ -75,10 +75,10 @@ end
 
 # Space toggles the simulation; q quits. Keys reach the board because
 # it is focusable and focused.
-function DualUI.on_event!(b::LifeBoard, d::Dispatch{KeyEvent})
+function ManyUI.on_event!(b::LifeBoard, d::Dispatch{KeyEvent})
     e = d.event
     if e.code === Key.CHAR && e.char == 'q'
-        a = DualUI.app(b)
+        a = ManyUI.app(b)
         a === nothing || quit!(a)
         consume!(d)
     end
@@ -125,7 +125,7 @@ function main()
                    title = "Game of Life")
     # One timer per SESSION would be better; this drives every session's
     # board through the server's session list.
-    println("Life running at ", DualUIWeb.url(server))
+    println("Life running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         while true
@@ -140,7 +140,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

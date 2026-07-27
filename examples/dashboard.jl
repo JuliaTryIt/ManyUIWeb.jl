@@ -1,6 +1,6 @@
 # dashboard.jl -- a filter box driving a list, in a browser.
 #
-#     julia --project=DualUIWeb DualUIWeb/examples/dashboard.jl
+#     julia --project=ManyUIWeb ManyUIWeb/examples/dashboard.jl
 #
 # then open http://127.0.0.1:8000/.
 #
@@ -13,8 +13,8 @@
 # another widget, that mutation marks only what changed, and the next
 # frame sends only the cells that differ.
 
-using DualUI
-using DualUIWeb
+using ManyUI
+using ManyUIWeb
 
 const LANGUAGES = [
     "Julia", "Python", "Rust", "Go", "C", "C++", "Haskell", "OCaml",
@@ -78,14 +78,14 @@ function main()
     port = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 8000
     server = serve(dashboard_app; port = port, stylesheet = SHEET,
                    title = "Dashboard")
-    println("Dashboard running at ", DualUIWeb.url(server))
+    println("Dashboard running at ", ManyUIWeb.url(server))
     println("Ctrl-C to stop.")
     try
         wait(server)
     catch e
         e isa InterruptException || rethrow()
     finally
-        DualUI.stop!(server)
+        ManyUI.stop!(server)
         println("stopped")
     end
 end

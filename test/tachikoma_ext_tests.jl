@@ -9,10 +9,10 @@
 # Tachikoma is absent.
 
 @testitem "tachikoma: serve_tachikoma is exported and stubbed" begin
-    using DualUIWeb
+    using ManyUIWeb
 
-    @test isdefined(DualUIWeb, :serve_tachikoma)
-    @test :serve_tachikoma in names(DualUIWeb)
+    @test isdefined(ManyUIWeb, :serve_tachikoma)
+    @test :serve_tachikoma in names(ManyUIWeb)
     # With no Tachikoma loaded the stub answers, and it names the fix.
     err = try
         serve_tachikoma(() -> nothing)

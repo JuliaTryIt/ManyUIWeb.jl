@@ -1,4 +1,4 @@
-# examples_tests.jl -- the examples in DualUIWeb/examples/ must keep
+# examples_tests.jl -- the examples in ManyUIWeb/examples/ must keep
 # working.
 #
 # These are not smoke tests. An example that builds but paints a blank
@@ -19,16 +19,16 @@ example_path(name) = joinpath(@__DIR__, "..", "examples", name)
 """
 Paint `w` at `sz` and return its rows as strings. Internal.
 """
-function example_rows(w, sz::DualUI.Size)
-    buf = DualUI.Buffer(sz)
-    DualUI.clear!(buf)
-    DualUI.paint!(buf, w)
+function example_rows(w, sz::ManyUI.Size)
+    buf = ManyUI.Buffer(sz)
+    ManyUI.clear!(buf)
+    ManyUI.paint!(buf, w)
     return [join(String(buf.cells[x, y].content) for x in 1:sz.width)
             for y in 1:sz.height]
 end
 
 @testitem "examples: gallery shows every widget" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "gallery.jl"))
 
     ui = gallery_app()
@@ -41,7 +41,7 @@ end
                    for y in 1:20], "\n")
 
     # One assertion per widget, so a regression names itself.
-    @test occursin("DualUI widget gallery", screen)   # Label
+    @test occursin("ManyUI widget gallery", screen)   # Label
     @test occursin("Static does not wrap", screen)    # Static
     @test occursin("press me", screen)                # Button
     @test occursin("type, then enter", screen)        # TextInput placeholder
@@ -54,7 +54,7 @@ end
 end
 
 @testitem "examples: unicode demo agrees with the width model" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "unicode.jl"))
 
     # The demo's own table is its assertion: each case declares the
@@ -84,7 +84,7 @@ end
 end
 
 @testitem "examples: life oscillates a blinker" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "life.jl"))
 
     b = LifeBoard(24, 5)
@@ -107,7 +107,7 @@ end
 end
 
 @testitem "examples: rain falls without growing the tree" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "rain.jl"))
 
     r = rain_app()
@@ -137,7 +137,7 @@ end
 end
 
 @testitem "examples: snake steers, eats and dies" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "snake.jl"))
 
     s = snake_app()
@@ -198,7 +198,7 @@ end
 end
 
 @testitem "examples: datatable sorts 5000 rows without touching them" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "datatable.jl"))
 
     ui = table_app()
@@ -230,7 +230,7 @@ end
 end
 
 @testitem "examples: dashboard filters its list" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "dashboard.jl"))
 
     ui = dashboard_app()
@@ -264,7 +264,7 @@ end
 end
 
 @testitem "examples: log follows the tail, then lets go" begin
-    using DualUI
+    using ManyUI
     include(joinpath(@__DIR__, "..", "examples", "scrollpane.jl"))
 
     ui = log_app()
