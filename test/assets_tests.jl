@@ -10,12 +10,12 @@
 # on another file's TODO.
 
 @testitem "Assets: index_html is non-empty and mounts xterm" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import Sockets
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
                                  10.0, 64, "ManyUI",
-                                 ManyUIWeb.ManyUI.Size(80, 24),
-                                 ManyUIWeb.ManyUI.Size(20, 5))
+                                 ManyUIWeb.ManyUITUI.Size(80, 24),
+                                 ManyUIWeb.ManyUITUI.Size(20, 5))
     html = ManyUIWeb.index_html(cfg)
 
     @test html isa String
@@ -42,12 +42,12 @@
 end
 
 @testitem "Assets: index_html carries the WebSocket bootstrap" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import Sockets
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
                                  10.0, 64, "ManyUI",
-                                 ManyUIWeb.ManyUI.Size(80, 24),
-                                 ManyUIWeb.ManyUI.Size(20, 5))
+                                 ManyUIWeb.ManyUITUI.Size(80, 24),
+                                 ManyUIWeb.ManyUITUI.Size(20, 5))
     html = ManyUIWeb.index_html(cfg)
 
     # A WebSocket client, pointed at the server's own path.
@@ -80,12 +80,12 @@ end
 end
 
 @testitem "Assets: index_html reconnects with a notice and backoff" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import Sockets
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
                                  10.0, 64, "ManyUI",
-                                 ManyUIWeb.ManyUI.Size(80, 24),
-                                 ManyUIWeb.ManyUI.Size(20, 5))
+                                 ManyUIWeb.ManyUITUI.Size(80, 24),
+                                 ManyUIWeb.ManyUITUI.Size(20, 5))
     html = ManyUIWeb.index_html(cfg)
 
     # X4's client half: a close is a pause, not a death.
@@ -102,12 +102,12 @@ end
 end
 
 @testitem "Assets: index_html templates the configured title" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import Sockets
     mk = t -> ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true,
                                      300.0, 10.0, 64, t,
-                                     ManyUIWeb.ManyUI.Size(80, 24),
-                                     ManyUIWeb.ManyUI.Size(20, 5))
+                                     ManyUIWeb.ManyUITUI.Size(80, 24),
+                                     ManyUIWeb.ManyUITUI.Size(20, 5))
 
     html = ManyUIWeb.index_html(mk("My Dashboard"))
     @test occursin("<title>My Dashboard</title>", html)
@@ -130,7 +130,7 @@ end
 end
 
 @testitem "Assets: content_type maps every served path" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     ct = ManyUIWeb.content_type
 
     @test ct("/") == "text/html; charset=utf-8"
@@ -161,7 +161,7 @@ end
 end
 
 @testitem "Assets: ASSETS bakes the bundle with its mime types" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     @test ManyUIWeb.ASSETS isa Dict{String,Tuple{String,Vector{UInt8}}}
     @test isdir(ManyUIWeb.ASSET_DIR)
 
@@ -201,7 +201,7 @@ end
 end
 
 @testitem "Assets: xterm loads from a pinned CDN version" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     html = ManyUIWeb.INDEX_HTML
 
     # Pinned, not floating: no `@latest`, no bare package name.

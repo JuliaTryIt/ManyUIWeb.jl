@@ -12,7 +12,7 @@
 # costs the same as it would for five. Try 5_000_000 if you like -- the
 # only thing that grows is the Vector.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 const ELEMENTS = [
@@ -75,7 +75,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

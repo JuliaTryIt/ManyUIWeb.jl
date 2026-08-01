@@ -202,7 +202,7 @@ function serve_native(model, proj::ManyUI.Projection, port::Int=8080)
 end
 
 # Implement the launch hook for WebNative
-function ManyUI.launch(model, proj::ManyUI.WebNative; port::Int=8080, wait::Bool=true, kwargs...)
+function ManyUITUI.launch(model, proj::ManyUI.WebNative; port::Int=8080, wait::Bool=true, kwargs...)
     server = serve_native(model, proj, port)
     wait || return server
     try

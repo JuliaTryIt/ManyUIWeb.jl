@@ -9,7 +9,7 @@
 # `run!(App(LifeBoard(), TerminalDriver()))` -- the application does not
 # know which one it is talking to.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 """
@@ -57,7 +57,7 @@ end
 const ALIVE = Style(; fg = rgb(0x7d, 0xd3, 0xfc))
 const HUD = Style(; fg = rgb(0x94, 0xa3, 0xb8))
 
-function ManyUI.render!(b::LifeBoard, buf::AbstractMatrix{Cell})
+function ManyUITUI.render!(b::LifeBoard, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width <= 0 || height <= 0) && return nothing
     h, w = size(b.grid)
@@ -140,7 +140,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

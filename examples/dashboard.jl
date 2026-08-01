@@ -13,7 +13,7 @@
 # another widget, that mutation marks only what changed, and the next
 # frame sends only the cells that differ.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 const LANGUAGES = [
@@ -85,7 +85,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

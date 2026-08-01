@@ -7,13 +7,13 @@ The transport is framework-neutral. Its core -- the wire protocol, the
 xterm.js client, and a server driven through the [`AbstractSession`](@ref)
 / [`AbstractFrontend`](@ref) seam -- names no UI framework. ManyUI is one
 frontend (the default: `serve`, [`WebSocketDriver`](@ref), [`Session`](@ref)),
-built on the nine-method `ManyUI.Driver` seam and nothing beyond
+built on the nine-method `ManyUITUI.Driver` seam and nothing beyond
 `ManyUI.WEB_BRIDGE_SURFACE`. A Tachikoma frontend ships as a package
 extension, loaded when Tachikoma is present.
 """
 module ManyUIWeb
 
-using ManyUI
+using ManyUI, ManyUITUI
 using DocStringExtensions
 import HTTP
 import JSON3
@@ -65,7 +65,7 @@ This is a stub: the real method lives in the `Tachikoma` package extension
 and appears only once Tachikoma is loaded. It also requires a Tachikoma
 that accepts an `io=` sink (`with_terminal`/`app`); see Tachikoma PR #39.
 
-    using ManyUIWeb, Tachikoma
+    using ManyUI, ManyUITUIWeb, Tachikoma
     serve_tachikoma(() -> MyModel(); port = 8000)
 
 Constraint, from Tachikoma's process-global terminal I/O: the app is

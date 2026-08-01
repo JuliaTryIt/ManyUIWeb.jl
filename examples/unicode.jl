@@ -16,7 +16,7 @@
 # `text_width` and `grapheme_width` of its own. The last column shows
 # what it would have said.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 """
@@ -103,7 +103,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

@@ -67,9 +67,9 @@ struct ServerConfig
     "Browser tab title."
     title::String
     "Size assumed before the first HELLO."
-    default_size::ManyUI.Size
+    default_size::ManyUITUI.Size
     "X2. Below this a session shows the overlay."
-    min_size::ManyUI.Size
+    min_size::ManyUITUI.Size
     """
     The APP config every session is built with.
 
@@ -81,7 +81,7 @@ struct ServerConfig
     otherwise unreachable through `serve`. Passing `app` WINS: `title` and
     `min_size` are then ignored.
     """
-    app::ManyUI.AppConfig
+    app::ManyUITUI.AppConfig
 end
 
 """
@@ -95,11 +95,11 @@ meaning the same thing.
 ServerConfig(host::Sockets.IPAddr, port::Int, multi_session::Bool,
              session_timeout::Float64, reap_interval::Float64,
              max_sessions::Int, title::AbstractString,
-             default_size::ManyUI.Size,
-             min_size::ManyUI.Size)::ServerConfig =
+             default_size::ManyUITUI.Size,
+             min_size::ManyUITUI.Size)::ServerConfig =
     ServerConfig(host, port, multi_session, session_timeout, reap_interval,
                  max_sessions, String(title), default_size, min_size,
-                 ManyUI.AppConfig(; min_size = min_size, title = title))
+                 ManyUITUI.AppConfig(; min_size = min_size, title = title))
 
 """
 Config with the documented defaults.
@@ -111,10 +111,10 @@ ServerConfig(; host::Sockets.IPAddr = Sockets.localhost,
                reap_interval::Float64 = 10.0,
                max_sessions::Int = 64,
                title::AbstractString = "ManyUI",
-               default_size::ManyUI.Size = ManyUI.Size(80, 24),
-               min_size::ManyUI.Size = ManyUI.Size(20, 5),
-               app::ManyUI.AppConfig =
-                   ManyUI.AppConfig(; min_size = min_size,
+               default_size::ManyUITUI.Size = ManyUITUI.Size(80, 24),
+               min_size::ManyUITUI.Size = ManyUITUI.Size(20, 5),
+               app::ManyUITUI.AppConfig =
+                   ManyUITUI.AppConfig(; min_size = min_size,
                                       title = title))::ServerConfig =
     ServerConfig(host, port, multi_session, session_timeout,
                  reap_interval, max_sessions, String(title),
@@ -166,7 +166,7 @@ never names a driver type. The SAME factory feeds
 `App(factory(), TerminalDriver())` and `serve(factory)`.
 """
 WebServer(factory;
-          stylesheet::ManyUI.Stylesheet = ManyUI.STYLESHEET_EMPTY,
+          stylesheet::ManyUITUI.Stylesheet = ManyUITUI.STYLESHEET_EMPTY,
           config::ServerConfig = ServerConfig()) =
     WebServer(ManyUIFrontend(factory, stylesheet); config = config)
 
@@ -177,7 +177,7 @@ call on a listening server binds nothing.
 
 Throws `PortInUseError` when `config.port` is taken.
 """
-function ManyUI.start!(s::WebServer)::WebServer
+function ManyUITUI.start!(s::WebServer)::WebServer
     started = Base.@lock s.lock begin
         if s.server === nothing
             # `_bind` throws BEFORE anything is mutated, so a refused
@@ -241,7 +241,7 @@ inspect it, `stop!` it, or `wait(s)` to block on purpose.
     stop!(s)
 """
 serve(factory; host = Sockets.localhost, port::Int = 8000,
-      stylesheet::ManyUI.Stylesheet = ManyUI.STYLESHEET_EMPTY,
+      stylesheet::ManyUITUI.Stylesheet = ManyUITUI.STYLESHEET_EMPTY,
       kwargs...)::WebServer =
     serve(factory, ServerConfig(; host = host, port = port, kwargs...);
           stylesheet = stylesheet)
@@ -250,8 +250,8 @@ serve(factory; host = Sockets.localhost, port::Int = 8000,
 W1 / req 2.4. Start a server over a prebuilt config. Non-blocking.
 """
 serve(factory, cfg::ServerConfig;
-      stylesheet::ManyUI.Stylesheet = ManyUI.STYLESHEET_EMPTY)::WebServer =
-    ManyUI.start!(WebServer(factory; stylesheet = stylesheet,
+      stylesheet::ManyUITUI.Stylesheet = ManyUITUI.STYLESHEET_EMPTY)::WebServer =
+    ManyUITUI.start!(WebServer(factory; stylesheet = stylesheet,
                             config = cfg))
 
 """
@@ -262,7 +262,7 @@ know whether it already ran. Sessions are terminated OUTSIDE `s.lock` --
 `terminate!` waits on a session task, and a task that is mid-`reap!`
 would deadlock against a held lock.
 """
-function ManyUI.stop!(s::WebServer)::Nothing
+function ManyUITUI.stop!(s::WebServer)::Nothing
     Base.@lock s.lock begin
         s.running = false
     end
@@ -296,7 +296,7 @@ end
 """
 Forward to `stop!`.
 """
-Base.close(s::WebServer)::Nothing = ManyUI.stop!(s)
+Base.close(s::WebServer)::Nothing = ManyUITUI.stop!(s)
 
 """
 Block until the listener has finished. Returns immediately when the

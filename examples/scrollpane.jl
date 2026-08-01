@@ -10,7 +10,7 @@
 # yanked out from under you. That is one call to `scroll_to!`, decided
 # by comparing the offset against `max_scroll`.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 const LEVELS = [("INFO", rgb(0x7d, 0xd3, 0xfc)),
@@ -77,7 +77,7 @@ function emit!(w::LogView)
     return nothing
 end
 
-function ManyUI.render!(w::LogView, buf::AbstractMatrix{Cell})
+function ManyUITUI.render!(w::LogView, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width <= 0 || height <= 0) && return nothing
     off = scroll_of(w)
@@ -182,7 +182,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

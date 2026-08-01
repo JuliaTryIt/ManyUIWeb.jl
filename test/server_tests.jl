@@ -15,8 +15,8 @@
 # every client call carries a timeout.
 
 @testitem "server: ServerConfig carries the documented defaults" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import Sockets
 
     c = ServerConfig()
@@ -33,8 +33,8 @@
 end
 
 @testitem "server: every ServerConfig keyword lands in its own field" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import Sockets
 
     # Every value below differs from the default, so a keyword wired to
@@ -56,8 +56,8 @@ end
 end
 
 @testitem "server: WebServer is parametric in its frontend" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
 
     f = () -> Container()
     s = WebServer(f)
@@ -77,8 +77,8 @@ end
 end
 
 @testitem "server: handle_http serves index at root" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     s = WebServer(() -> Container())
@@ -94,8 +94,8 @@ end
 end
 
 @testitem "server: handle_http serves the vendored bundle" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     s = WebServer(() -> Container())
@@ -115,8 +115,8 @@ end
 end
 
 @testitem "server: handle_http 404s an unknown path" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     s = WebServer(() -> Container())
@@ -133,8 +133,8 @@ end
 end
 
 @testitem "server: handle_http refuses a non-GET" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     s = WebServer(() -> Container())
@@ -146,8 +146,8 @@ end
 end
 
 @testitem "server: handle_http ignores the query string when routing" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     s = WebServer(() -> Container())
@@ -157,8 +157,8 @@ end
 end
 
 @testitem "server: handle_http reports the session count at healthz" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
     import JSON3
 
@@ -173,8 +173,8 @@ end
 end
 
 @testitem "server: url reports the configured port before it binds" begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import Sockets
 
     s = WebServer(() -> Container();
@@ -189,7 +189,7 @@ end
 end
 
 @testitem "server: session ids are 32 unguessable hex chars" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
 
     ids = Set{String}()
     for _ in 1:256
@@ -205,7 +205,7 @@ end
 end
 
 @testitem "server: PortInUseError explains itself" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import Sockets
 
     e = ManyUIWeb.PortInUseError(Sockets.localhost, 8000)
@@ -219,8 +219,8 @@ end
 end
 
 @testitem "server: serve binds port and is non-blocking" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     # W1 / req 2.4. `port = 0` asks the OS for a free ephemeral port.
@@ -247,14 +247,14 @@ end
                      connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
-        ManyUI.stop!(s)
+        ManyUITUI.stop!(s)
     end
     @test !isopen(s)
 end
 
 @testitem "server: a real GET / returns the html bundle" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     s = serve(() -> Container(); port = 0)
@@ -268,13 +268,13 @@ end
         @test !isempty(r.body)
         @test String(r.body) == ManyUIWeb.index_html(s.config)
     finally
-        ManyUI.stop!(s)
+        ManyUITUI.stop!(s)
     end
 end
 
 @testitem "server: a real GET of an unknown path 404s" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     s = serve(() -> Container(); port = 0)
@@ -291,20 +291,20 @@ end
                       connect_timeout = 30, readtimeout = 60)
         @test ok.status == 200
     finally
-        ManyUI.stop!(s)
+        ManyUITUI.stop!(s)
     end
 end
 
 @testitem "server: url reflects the bound port" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
 
     s = serve(() -> Container(); port = 0)
     port = ManyUIWeb.bound_port(s)
     try
         @test ManyUIWeb.url(s) == "http://127.0.0.1:$port/"
     finally
-        ManyUI.stop!(s)
+        ManyUITUI.stop!(s)
     end
     # Once stopped there is no bound port left to report, so `url` falls
     # back to what was configured.
@@ -312,8 +312,8 @@ end
 end
 
 @testitem "server: stop! frees the bound port" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
     import Sockets
 
@@ -326,7 +326,7 @@ end
                      connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
-        ManyUI.stop!(s)
+        ManyUITUI.stop!(s)
     end
     @test !isopen(s)
     @test s.server === nothing
@@ -344,8 +344,8 @@ end
 end
 
 @testitem "server: a busy port reports a clear error" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
 
     incumbent = serve(() -> Container(); port = 0)
     try
@@ -353,7 +353,7 @@ end
         loser = WebServer(() -> Container();
                           config = ServerConfig(port = port))
         err = try
-            ManyUI.start!(loser)
+            ManyUITUI.start!(loser)
             nothing
         catch e
             e
@@ -371,36 +371,36 @@ end
         # And it must not have disturbed the incumbent.
         @test isopen(incumbent)
     finally
-        ManyUI.stop!(incumbent)
+        ManyUITUI.stop!(incumbent)
     end
 end
 
 @testitem "server: start! and stop! are idempotent" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
 
     s = WebServer(() -> Container(); config = ServerConfig(port = 0))
     try
-        @test ManyUI.start!(s) === s
+        @test ManyUITUI.start!(s) === s
         port = ManyUIWeb.bound_port(s)
         # A second start must not bind a second listener.
-        @test ManyUI.start!(s) === s
+        @test ManyUITUI.start!(s) === s
         @test ManyUIWeb.bound_port(s) == port
         @test isopen(s)
     finally
-        ManyUI.stop!(s)
+        ManyUITUI.stop!(s)
     end
     @test !isopen(s)
     # Stopping twice is a no-op, not a throw -- teardown runs from
     # `finally` blocks that cannot know whether it already ran.
-    @test ManyUI.stop!(s) === nothing
-    @test ManyUI.stop!(s) === nothing
+    @test ManyUITUI.stop!(s) === nothing
+    @test ManyUITUI.stop!(s) === nothing
     @test !isopen(s)
 end
 
 @testitem "server: close forwards to stop!" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
 
     s = serve(() -> Container(); port = 0)
     try
@@ -413,8 +413,8 @@ end
 end
 
 @testitem "server: serve accepts a prebuilt config" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     cfg = ServerConfig(port = 0, title = "prebuilt", max_sessions = 5)
@@ -429,6 +429,6 @@ end
                      connect_timeout = 30, readtimeout = 60)
         @test r.status == 200
     finally
-        ManyUI.stop!(s)
+        ManyUITUI.stop!(s)
     end
 end

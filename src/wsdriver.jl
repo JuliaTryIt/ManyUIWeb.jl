@@ -1,4 +1,4 @@
-# wsdriver.jl -- W2. `WebSocketDriver <: ManyUI.Driver`: the nine
+# wsdriver.jl -- W2. `WebSocketDriver <: ManyUITUI.Driver`: the nine
 # methods, nothing more.
 #
 # Every method below is a public ManyUI generic. Nothing reaches into
@@ -7,14 +7,14 @@
 
 """
 A ManyUI driver whose target is a browser: ANSI bytes out over a
-WebSocket, keystrokes back in through the SAME `ManyUI.InputParser` a
+WebSocket, keystrokes back in through the SAME `ManyUITUI.InputParser` a
 TTY uses.
 """
-mutable struct WebSocketDriver <: ManyUI.Driver
+mutable struct WebSocketDriver <: ManyUITUI.Driver
     "The App's only input."
-    const chan::Channel{ManyUI.Event}
+    const chan::Channel{ManyUITUI.Event}
     "Shared byte parser -- the terminal's parser, verbatim."
-    const parser::ManyUI.InputParser
+    const parser::ManyUITUI.InputParser
     "BACKPRESSURE ONLY. Never the pause mechanism."
     const outbox::Channel{Vector{UInt8}}
     "Staging buffer; `flush!` is the commit point."
@@ -24,9 +24,9 @@ mutable struct WebSocketDriver <: ManyUI.Driver
     "The live socket, or `nothing` while detached."
     ws::Union{Nothing,HTTP.WebSockets.WebSocket}
     "Client-reported renderable area."
-    size::ManyUI.Size
+    size::ManyUITUI.Size
     "What the client claims to do."
-    caps::ManyUI.DriverCaps
+    caps::ManyUITUI.DriverCaps
     "True while a socket is attached."
     connected::Bool
     "False once stopped."
@@ -40,18 +40,18 @@ end
 """
 A detached driver: no socket yet, but a live channel and parser.
 """
-function WebSocketDriver(; size::ManyUI.Size = ManyUI.Size(80, 24),
-                           depth::ManyUI.ColorDepth.T =
-                               ManyUI.ColorDepth.TRUECOLOR,
+function WebSocketDriver(; size::ManyUITUI.Size = ManyUITUI.Size(80, 24),
+                           depth::ManyUITUI.ColorDepth.T =
+                               ManyUITUI.ColorDepth.TRUECOLOR,
                            buffer::Int = 256,
                            outbox::Int = 64)::WebSocketDriver
     buffer > 0 || throw(ArgumentError("buffer must be positive"))
     outbox > 0 || throw(ArgumentError("outbox must be positive"))
     # A browser terminal does everything a good TTY does, and unlike one
     # it always has a settable title.
-    caps = ManyUI.DriverCaps(; color_depth = depth, title = true)
-    return WebSocketDriver(Channel{ManyUI.Event}(buffer),
-                           ManyUI.InputParser(),
+    caps = ManyUITUI.DriverCaps(; color_depth = depth, title = true)
+    return WebSocketDriver(Channel{ManyUITUI.Event}(buffer),
+                           ManyUITUI.InputParser(),
                            Channel{Vector{UInt8}}(outbox),
                            IOBuffer(), ReentrantLock(), nothing, size,
                            caps, false, true, false, nothing)
@@ -61,9 +61,9 @@ end
 `caps` with `color_depth` replaced. `DriverCaps` is `isbits`, so this
 rebuilds rather than mutates. Pure. Internal.
 """
-_with_depth(c::ManyUI.DriverCaps,
-            depth::ManyUI.ColorDepth.T)::ManyUI.DriverCaps =
-    ManyUI.DriverCaps(depth, c.mouse, c.bracketed_paste, c.focus_events,
+_with_depth(c::ManyUITUI.DriverCaps,
+            depth::ManyUITUI.ColorDepth.T)::ManyUITUI.DriverCaps =
+    ManyUITUI.DriverCaps(depth, c.mouse, c.bracketed_paste, c.focus_events,
                       c.alt_screen, c.title, c.unicode, c.sync_output)
 
 """
@@ -114,24 +114,24 @@ browser produces nothing at all -- the client's own comment says it is
 waiting ("xterm.js routes SGR (1006) mouse reports through onData once
 the app enables tracking"), and nothing was ever enabling it. Internal.
 """
-function _ws_setup_bytes(caps::ManyUI.DriverCaps)::Vector{UInt8}
+function _ws_setup_bytes(caps::ManyUITUI.DriverCaps)::Vector{UInt8}
     io = IOBuffer()
-    write(io, ManyUI.Ansi.CURSOR_HIDE)
-    caps.mouse && write(io, ManyUI.Ansi.MOUSE_ON)
-    caps.bracketed_paste && write(io, ManyUI.Ansi.PASTE_ON)
-    caps.focus_events && write(io, ManyUI.Ansi.FOCUS_ON)
+    write(io, ManyUITUI.Ansi.CURSOR_HIDE)
+    caps.mouse && write(io, ManyUITUI.Ansi.MOUSE_ON)
+    caps.bracketed_paste && write(io, ManyUITUI.Ansi.PASTE_ON)
+    caps.focus_events && write(io, ManyUITUI.Ansi.FOCUS_ON)
     return take!(io)
 end
 
 """
 The exact reverse of `_ws_setup_bytes`, innermost first. Internal.
 """
-function _ws_teardown_bytes(caps::ManyUI.DriverCaps)::Vector{UInt8}
+function _ws_teardown_bytes(caps::ManyUITUI.DriverCaps)::Vector{UInt8}
     io = IOBuffer()
-    caps.focus_events && write(io, ManyUI.Ansi.FOCUS_OFF)
-    caps.bracketed_paste && write(io, ManyUI.Ansi.PASTE_OFF)
-    caps.mouse && write(io, ManyUI.Ansi.MOUSE_OFF)
-    write(io, ManyUI.Ansi.CURSOR_SHOW)
+    caps.focus_events && write(io, ManyUITUI.Ansi.FOCUS_OFF)
+    caps.bracketed_paste && write(io, ManyUITUI.Ansi.PASTE_OFF)
+    caps.mouse && write(io, ManyUITUI.Ansi.MOUSE_OFF)
+    write(io, ManyUITUI.Ansi.CURSOR_SHOW)
     return take!(io)
 end
 
@@ -143,8 +143,8 @@ Idempotent.
 Does NOT emit the setup sequences: `attach!` does, because a RECONNECT
 calls `attach!` and never `start!`.
 """
-function ManyUI.start!(d::WebSocketDriver,
-                       size_hint::Union{Nothing,ManyUI.Size} =
+function ManyUITUI.start!(d::WebSocketDriver,
+                       size_hint::Union{Nothing,ManyUITUI.Size} =
                            nothing)::Nothing
     lock(d.lock) do
         size_hint === nothing || (d.size = size_hint)
@@ -156,29 +156,29 @@ end
 """
 Stop the pump, close the channels, detach the socket. Idempotent.
 """
-function ManyUI.stop!(d::WebSocketDriver)::Nothing
+function ManyUITUI.stop!(d::WebSocketDriver)::Nothing
     d.open || return nothing
     detach!(d)
     isopen(d.outbox) && close(d.outbox)
     isopen(d.chan) && close(d.chan)
     d.open = false
     d.started = false
-    ManyUI.restore!(d)
+    ManyUITUI.restore!(d)
     return nothing
 end
 
 """
 X3. A no-op: a browser needs nothing undone. Idempotent, never throws.
 """
-function ManyUI.restore!(d::WebSocketDriver)::Nothing
+function ManyUITUI.restore!(d::WebSocketDriver)::Nothing
     # X3. Undo what `start!` turned on, so a client that outlives the
     # session is not left with mouse reporting on and no cursor. MUST
     # NOT throw: this runs inside a `catch`, inside a `finally`, and the
     # socket is usually already gone by the time it does -- a failure to
     # tidy up must never mask the error that caused it.
     try
-        ManyUI.emit!(d, _ws_teardown_bytes(d.caps))
-        ManyUI.flush!(d)
+        ManyUITUI.emit!(d, _ws_teardown_bytes(d.caps))
+        ManyUITUI.flush!(d)
     catch
     end
     return nothing
@@ -188,7 +188,7 @@ end
 W3. Append `b` to `outbuf`; returns the bytes accepted. NEVER touches
 the socket.
 """
-ManyUI.emit!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
+ManyUITUI.emit!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
     lock(() -> write(d.outbuf, b), d.lock)
 
 """
@@ -197,13 +197,13 @@ detached (`ws === nothing`) or when `outbox` is full, it DISCARDS.
 
 Discarding is safe precisely because reattach posts a `RefreshEvent`,
 forcing a full repaint. `outbox` is backpressure ONLY -- it is never
-the pause mechanism. Pausing is `ManyUI.pause!(app)`, called explicitly
+the pause mechanism. Pausing is `ManyUITUI.pause!(app)`, called explicitly
 by `detach!`.
 
 `outbuf` is drained even when the frame is dropped, so a detached
 driver never grows without bound.
 """
-function ManyUI.flush!(d::WebSocketDriver)::Nothing
+function ManyUITUI.flush!(d::WebSocketDriver)::Nothing
     frame = lock(d.lock) do
         position(d.outbuf) == 0 && return nothing
         bytes = take!(d.outbuf)          # drains, attached or not
@@ -217,17 +217,17 @@ end
 """
 The client-reported renderable area.
 """
-ManyUI.display_size(d::WebSocketDriver)::ManyUI.Size = d.size
+ManyUITUI.display_size(d::WebSocketDriver)::ManyUITUI.Size = d.size
 
 """
 What the client claims to do.
 """
-ManyUI.capabilities(d::WebSocketDriver)::ManyUI.DriverCaps = d.caps
+ManyUITUI.capabilities(d::WebSocketDriver)::ManyUITUI.DriverCaps = d.caps
 
 """
 The event channel.
 """
-ManyUI.events(d::WebSocketDriver)::Channel{ManyUI.Event} = d.chan
+ManyUITUI.events(d::WebSocketDriver)::Channel{ManyUITUI.Event} = d.chan
 
 """
 True while the driver can still deliver events. Note that a DETACHED
@@ -241,8 +241,8 @@ Send an OSC 0 title sequence to the client.
 It rides the ordinary byte pipe rather than the socket, so it is
 ordered with respect to the frames around it.
 """
-function ManyUI.set_title!(d::WebSocketDriver, s::AbstractString)::Nothing
-    ManyUI.emit!(d, codeunits(string("\e]0;", s, "\a")))
+function ManyUITUI.set_title!(d::WebSocketDriver, s::AbstractString)::Nothing
+    ManyUITUI.emit!(d, codeunits(string("\e]0;", s, "\a")))
     return nothing
 end
 
@@ -266,10 +266,10 @@ function attach!(d::WebSocketDriver, ws::HTTP.WebSockets.WebSocket,
         d.ws = ws
         d.connected = true
         if hello.width > 0 && hello.height > 0
-            d.size = ManyUI.Size(hello.width, hello.height)
+            d.size = ManyUITUI.Size(hello.width, hello.height)
         end
-        depth = hello.truecolor ? ManyUI.ColorDepth.TRUECOLOR :
-                                  ManyUI.ColorDepth.ANSI256
+        depth = hello.truecolor ? ManyUITUI.ColorDepth.TRUECOLOR :
+                                  ManyUITUI.ColorDepth.ANSI256
         d.caps = _with_depth(d.caps, depth)
         # Publish the task BEFORE it runs: the pump's first act is to
         # take this same lock, so it cannot observe a stale `d.pump`.
@@ -282,8 +282,8 @@ function attach!(d::WebSocketDriver, ws::HTTP.WebSockets.WebSocket,
     # not in `start!`: a reconnect calls `attach!` alone, so setup done
     # at start! would be lost on every reconnection and a resumed
     # session would come back with no mouse.
-    ManyUI.emit!(d, _ws_setup_bytes(d.caps))
-    ManyUI.flush!(d)
+    ManyUITUI.emit!(d, _ws_setup_bytes(d.caps))
+    ManyUITUI.flush!(d)
     return nothing
 end
 
@@ -311,11 +311,11 @@ end
 # it too, for the same reason); see the report.
 """
 W4. A binary frame becomes
-`ManyUI.pump_input!(d.parser, d.chan, bytes)` -- the SAME parser the
+`ManyUITUI.pump_input!(d.parser, d.chan, bytes)` -- the SAME parser the
 terminal uses. This one call IS the entire "web input" implementation.
 """
-ManyUI.feed_bytes!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
-    ManyUI.pump_input!(d.parser, d.chan, b)
+ManyUITUI.feed_bytes!(d::WebSocketDriver, b::AbstractVector{UInt8})::Int =
+    ManyUITUI.pump_input!(d.parser, d.chan, b)
 
 """
 Handle a text frame from its JSON: `decode_control`, then act. Invalid
@@ -333,7 +333,7 @@ handle_control!(d::WebSocketDriver, json::AbstractString)::Nothing =
 """
 Act on an already-decoded control frame.
 
-    RESIZE -> `d.size = Size(w, h)`; `ManyUI.notify_resize!(d, sz)` --
+    RESIZE -> `d.size = Size(w, h)`; `ManyUITUI.notify_resize!(d, sz)` --
               the IDENTICAL seam SIGWINCH uses, so E4 needs no
               web-specific code
     HELLO  -> size and depth update
@@ -344,18 +344,18 @@ function handle_control!(d::WebSocketDriver,
                          m::ControlMessage)::Nothing
     if m.kind === ControlKind.RESIZE
         (m.width > 0 && m.height > 0) || return nothing
-        sz = ManyUI.Size(m.width, m.height)
+        sz = ManyUITUI.Size(m.width, m.height)
         lock(d.lock) do
             d.size = sz
         end
-        ManyUI.notify_resize!(d, sz)
+        ManyUITUI.notify_resize!(d, sz)
     elseif m.kind === ControlKind.HELLO
         lock(d.lock) do
             if m.width > 0 && m.height > 0
-                d.size = ManyUI.Size(m.width, m.height)
+                d.size = ManyUITUI.Size(m.width, m.height)
             end
-            depth = m.truecolor ? ManyUI.ColorDepth.TRUECOLOR :
-                                  ManyUI.ColorDepth.ANSI256
+            depth = m.truecolor ? ManyUITUI.ColorDepth.TRUECOLOR :
+                                  ManyUITUI.ColorDepth.ANSI256
             d.caps = _with_depth(d.caps, depth)
         end
     elseif m.kind === ControlKind.PING

@@ -8,8 +8,8 @@
 # of exactly this shape.)
 
 @testitem "transport: a mock frontend records what the server delivers" tags=[:socket] begin
-    using ManyUIWeb
-    using ManyUI
+    using ManyUIWeb, ManyUITUI
+    using ManyUI, ManyUITUI
     import HTTP
 
     # A session that is not ManyUI and not Tachikoma: it just records every
@@ -61,7 +61,7 @@
 
     fe = RecFrontend(RecSession[])
     server = ManyUIWeb.WebServer(fe; config = ServerConfig(port = 0))
-    ManyUI.start!(server)
+    ManyUITUI.start!(server)
     try
         port = ManyUIWeb.bound_port(server)
         HTTP.WebSockets.open("ws://127.0.0.1:$port/ws") do ws
@@ -79,12 +79,12 @@
         @test any(m -> m.kind === ManyUIWeb.ControlKind.RESIZE &&
                        m.width == 100 && m.height == 30, s.controls)
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
     end
 end
 
 @testitem "transport: an incomplete frontend is caught by the interface check" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
 
     struct HalfSession <: ManyUIWeb.AbstractSession end
     ManyUIWeb.session_id(::HalfSession) = "x"

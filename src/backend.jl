@@ -13,7 +13,7 @@
 # escape hatch ManyUI's Backend docstring names for multiplexing targets.
 
 """
-The browser, as a `ManyUI.Backend`.
+The browser, as a `ManyUITUI.Backend`.
 
 Wraps a [`ServerConfig`](@ref), so every `serve` keyword works here and
 means the same thing:
@@ -24,7 +24,7 @@ Unlike a terminal, this target multiplexes: each browser that connects
 gets its OWN app, built by calling the factory again. That is why a
 `WebBackend` defines no `make_driver` -- there is no single driver to make.
 """
-struct WebBackend <: ManyUI.Backend
+struct WebBackend <: ManyUITUI.Backend
     "The transport. Every `serve` keyword lives here."
     config::ServerConfig
 end
@@ -45,7 +45,7 @@ $(SIGNATURES)
 
 Serve `factory` in a browser.
 
-Overrides the single-driver `ManyUI.launch` path because the web
+Overrides the single-driver `ManyUITUI.launch` path because the web
 multiplexes: `factory` is called once PER SESSION, not once here.
 
 `config` describes the app and is threaded into every session, so the same
@@ -59,9 +59,9 @@ out. Returns `0`. With `wait = false` it returns the live
 [`WebServer`](@ref), which answers `isopen`/`close`/`wait` like any other
 `launch` handle.
 """
-function ManyUI.launch(factory, backend::WebBackend;
-                       config::Union{Nothing,ManyUI.AppConfig} = nothing,
-                       stylesheet::ManyUI.Stylesheet = ManyUI.STYLESHEET_EMPTY,
+function ManyUITUI.launch(factory, backend::WebBackend;
+                       config::Union{Nothing,ManyUITUI.AppConfig} = nothing,
+                       stylesheet::ManyUITUI.Stylesheet = ManyUITUI.STYLESHEET_EMPTY,
                        wait::Bool = true)
     cfg = config === nothing ? backend.config :
           _with_app_config(backend.config, config)
@@ -74,7 +74,7 @@ function ManyUI.launch(factory, backend::WebBackend;
         # example wrote this by hand; `launch` owes them it.
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
     end
     return 0
 end
@@ -84,7 +84,7 @@ $(SIGNATURES)
 
 `cfg` with its app config replaced by `app`. Internal.
 """
-_with_app_config(cfg::ServerConfig, app::ManyUI.AppConfig)::ServerConfig =
+_with_app_config(cfg::ServerConfig, app::ManyUITUI.AppConfig)::ServerConfig =
     ServerConfig(; host = cfg.host, port = cfg.port,
                    multi_session = cfg.multi_session,
                    session_timeout = cfg.session_timeout,
@@ -101,7 +101,7 @@ $(SIGNATURES)
 Declarative entry point: launch a generic application `model` onto a `WebTerminal` Projection.
 It automatically sets up the factory to render the widget tree per session.
 """
-function ManyUI.launch(model, proj::ManyUI.WebTerminal; kwargs...)
+function ManyUITUI.launch(model, proj::ManyUI.WebTerminal; kwargs...)
     factory = () -> ManyUI.render(model, proj)
-    return ManyUI.launch(factory, WebBackend(); kwargs...)
+    return ManyUITUI.launch(factory, WebBackend(); kwargs...)
 end

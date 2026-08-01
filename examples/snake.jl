@@ -10,7 +10,7 @@
 # tty uses, and reach this widget as ordinary KeyEvents. Nothing here
 # knows a browser is involved.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 const HEAD = Style(; fg = rgb(0xbb, 0xf7, 0xd0), bold = true)
@@ -87,7 +87,7 @@ function step!(s::Snake)
     return nothing
 end
 
-function ManyUI.render!(s::Snake, buf::AbstractMatrix{Cell})
+function ManyUITUI.render!(s::Snake, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width < 4 || height < 4) && return nothing
     w = min(s.w, width)
@@ -190,7 +190,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

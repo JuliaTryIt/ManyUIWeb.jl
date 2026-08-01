@@ -9,7 +9,7 @@
 # HERE, visibly, without reading a test. It is also the honest inventory
 # -- what is on this page is what ManyUI has.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 const SHEET = parse_css("""
@@ -99,7 +99,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

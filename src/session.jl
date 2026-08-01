@@ -18,7 +18,7 @@ One fully independent application instance: its own App, event loop,
 driver and widget tree. Sessions share NOTHING but the immutable
 `Stylesheet` and `ServerConfig`.
 
-`ManyUI.App{WebSocketDriver}` is fully CONCRETE -- the per-session
+`ManyUITUI.App{WebSocketDriver}` is fully CONCRETE -- the per-session
 render loop is as type-stable over a WebSocket as over a TTY. That is
 the parametric `App{D}` decision paying off across a package boundary.
 """
@@ -28,7 +28,7 @@ mutable struct Session <: AbstractSession
     "This session's driver; nothing is shared."
     const driver::WebSocketDriver
     "This session's app; note the concrete parameter."
-    const app::ManyUI.App{WebSocketDriver}
+    const app::ManyUITUI.App{WebSocketDriver}
     "Where the session is in its life."
     state::SessionState.T
     "The task running `ManyUI.run!`."
@@ -55,7 +55,7 @@ ONCE, here: a fresh tree per session, nothing captured, nothing
 shared.
 """
 function Session(id::AbstractString, factory,
-                 stylesheet::ManyUI.Stylesheet,
+                 stylesheet::ManyUITUI.Stylesheet,
                  config)::Session
     driver = WebSocketDriver(; size = config.default_size)
     # ONE call, and it is the whole isolation story: a fresh tree yields
@@ -64,7 +64,7 @@ function Session(id::AbstractString, factory,
     # `config.app` is the whole AppConfig, not a two-field copy of it:
     # building one here from `min_size`/`title` alone silently dropped
     # `diff_gap`, `esc_timeout` and `sync_frames` on every session.
-    app = ManyUI.App(root, driver;
+    app = ManyUITUI.App(root, driver;
                      config = config.app,
                      stylesheet = stylesheet)
     now = time()
@@ -96,7 +96,7 @@ Base.isopen(s::Session)::Bool =
 """
 Attach or REATTACH a socket.
 
-On reattach: `ManyUI.resume!(sess.app)` (which implies `invalidate!`)
+On reattach: `ManyUITUI.resume!(sess.app)` (which implies `invalidate!`)
 AND `ManyUI.post!(app, RefreshEvent())`, so the reconnected client
 receives ONE full frame and is instantly consistent -- no replay log.
 Also `empty!(driver.parser)`: a half-parsed CSI from before the drop
@@ -110,13 +110,13 @@ function attach!(s::Session, ws::HTTP.WebSockets.WebSocket,
     if s.state === SessionState.NEW
         # First client: bring the loop up. `run!` calls `start!` on the
         # driver itself, so the size_hint from HELLO is already in.
-        s.task = ManyUI.start!(s.app)
+        s.task = ManyUITUI.start!(s.app)
     else
         # The reconnected client's screen is blank, so the diff baseline
         # must be reset. `resume!` implies `invalidate!`; the explicit
         # RefreshEvent is what wakes a loop parked on `take!`.
-        ManyUI.resume!(s.app)
-        ManyUI.post!(s.app, ManyUI.RefreshEvent())
+        ManyUITUI.resume!(s.app)
+        ManyUI.post!(s.app, ManyUITUI.RefreshEvent())
     end
     s.state = SessionState.RUNNING
     s.last_seen = time()
@@ -124,7 +124,7 @@ function attach!(s::Session, ws::HTTP.WebSockets.WebSocket,
 end
 
 """
-X4. The socket dropped: `detach!(s.driver)`, `ManyUI.pause!(s.app)`,
+X4. The socket dropped: `detach!(s.driver)`, `ManyUITUI.pause!(s.app)`,
 `state = PAUSED`, stamp `last_seen`.
 
 The App, its tree and its state stay RESIDENT. NEVER kills.
@@ -132,14 +132,14 @@ The App, its tree and its state stay RESIDENT. NEVER kills.
 function detach!(s::Session)::Nothing
     isopen(s) || return nothing
     detach!(s.driver)
-    ManyUI.pause!(s.app)
+    ManyUITUI.pause!(s.app)
     s.state = SessionState.PAUSED
     s.last_seen = time()
     return nothing
 end
 
 """
-X5. `ManyUI.quit!`, close the driver and channels, `wait(task)` with a
+X5. `ManyUITUI.quit!`, close the driver and channels, `wait(task)` with a
 deadline, `state = DEAD`.
 
 `deadline` is injectable so the suite never waits seconds for a
@@ -155,11 +155,11 @@ function terminate!(s::Session;
     # exists to serve. The `stop!` below closes the channel, which both
     # ends `_loop!` and unblocks this `put!` (as an InvalidStateException
     # that `post!` swallows).
-    @async ManyUI.quit!(s.app)
+    @async ManyUITUI.quit!(s.app)
     # The floor comes out from under it regardless: `stop!` closes the
     # event channel, which ends `_loop!` even if the QuitEvent never
     # lands.
-    ManyUI.stop!(s.driver)
+    ManyUITUI.stop!(s.driver)
     t = s.task
     if t !== nothing
         # Bounded: a wedged loop must not wedge the reaper.
@@ -207,7 +207,7 @@ session_attach!(s::Session, ws::HTTP.WebSockets.WebSocket,
                 hello::ControlMessage)::Nothing = attach!(s, ws, hello)
 session_detach!(s::Session)::Nothing = detach!(s)
 session_input!(s::Session, bytes::AbstractVector{UInt8})::Int =
-    ManyUI.feed_bytes!(s.driver, bytes)
+    ManyUITUI.feed_bytes!(s.driver, bytes)
 session_control!(s::Session, m::ControlMessage)::Nothing =
     handle_control!(s.driver, m)
 session_state(s::Session)::SessionState.T = s.state
@@ -231,7 +231,7 @@ struct ManyUIFrontend{F} <: AbstractFrontend
     "Called once per session; returns a fresh widget tree."
     factory::F
     "Shared, immutable; the same sheet styles every session."
-    stylesheet::ManyUI.Stylesheet
+    stylesheet::ManyUITUI.Stylesheet
 end
 
 """

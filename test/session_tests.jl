@@ -6,7 +6,7 @@
 # sleeps for a timeout to elapse.
 
 @testitem "session: is_expired pure predicate table" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
 
     S = ManyUIWeb.SessionState
     exp = ManyUIWeb._is_expired
@@ -24,7 +24,7 @@
 end
 
 @testitem "session: only a PAUSED session can expire" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
 
     S = ManyUIWeb.SessionState
     exp = ManyUIWeb._is_expired
@@ -38,20 +38,20 @@ end
 end
 
 @testitem "session: App is concrete over WebSocketDriver" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
 
     # The parametric App{D} decision paying off across a package
     # boundary: the per-session render loop is as type-stable over a
     # WebSocket as over a TTY.
-    @test isconcretetype(ManyUI.App{WebSocketDriver})
+    @test isconcretetype(ManyUITUI.App{WebSocketDriver})
     @test fieldtype(ManyUIWeb.Session, :app) ===
-          ManyUI.App{WebSocketDriver}
+          ManyUITUI.App{WebSocketDriver}
     @test fieldtype(ManyUIWeb.Session, :driver) === WebSocketDriver
 end
 
 @testitem "session: factory yields an independent tree per session" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
 
     # W5's isolation primitive, asserted with no App and no socket.
@@ -71,7 +71,7 @@ end
 end
 
 @testitem "session: two sessions share no mutable state" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
     import Sockets
 
@@ -83,25 +83,25 @@ end
     ManyUI.node(w::Counter) = w.node
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "t", ManyUI.Size(80, 24),
-                                 ManyUI.Size(20, 5))
+                                 10.0, 64, "t", ManyUITUI.Size(80, 24),
+                                 ManyUITUI.Size(20, 5))
     s1 = ManyUIWeb.Session("a"^32, () -> Counter(),
-                           ManyUI.STYLESHEET_EMPTY, cfg)
+                           ManyUITUI.STYLESHEET_EMPTY, cfg)
     s2 = ManyUIWeb.Session("b"^32, () -> Counter(),
-                           ManyUI.STYLESHEET_EMPTY, cfg)
+                           ManyUITUI.STYLESHEET_EMPTY, cfg)
 
     # 2.4: an INDEPENDENT application state, event loop and virtual
     # component tree for each connected client.
     @test s1.app !== s2.app
     @test s1.driver !== s2.driver
     @test s1.app.root !== s2.app.root
-    @test ManyUI.events(s1.driver) !== ManyUI.events(s2.driver)
+    @test ManyUITUI.events(s1.driver) !== ManyUITUI.events(s2.driver)
     @test s1.app.front !== s2.app.front
     @test s1.app.back !== s2.app.back
 
     # Mutate one session's app state; the other is untouched.
     s1.app.root.count = 42
-    ManyUI.pause!(s1.app)
+    ManyUITUI.pause!(s1.app)
     @test s2.app.root.count == 0
     @test s2.app.paused === false
 
@@ -110,7 +110,7 @@ end
 end
 
 @testitem "session: detach pauses and preserves state" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
     import Sockets
     import HTTP
@@ -128,10 +128,10 @@ end
                                    client = false)
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "t", ManyUI.Size(80, 24),
-                                 ManyUI.Size(20, 5))
+                                 10.0, 64, "t", ManyUITUI.Size(80, 24),
+                                 ManyUITUI.Size(20, 5))
     s = ManyUIWeb.Session("c"^32, () -> Counter(),
-                          ManyUI.STYLESHEET_EMPTY, cfg)
+                          ManyUITUI.STYLESHEET_EMPTY, cfg)
     @test ManyUIWeb.state(s) === ManyUIWeb.SessionState.NEW
 
     hello = ManyUIWeb.ControlMessage(ManyUIWeb.ControlKind.HELLO,
@@ -152,14 +152,14 @@ end
     # ...and the state is PRESERVED IN MEMORY, identically.
     @test s.app.root === root
     @test s.app.root.count == 5
-    @test isopen(ManyUI.events(s.driver))
+    @test isopen(ManyUITUI.events(s.driver))
     @test isopen(s)
 
     ManyUIWeb.terminate!(s; deadline = 0.5)
 end
 
 @testitem "session: attach resumes and forces a full frame" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
     import Sockets
     import HTTP
@@ -179,10 +179,10 @@ end
     end
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "t", ManyUI.Size(80, 24),
-                                 ManyUI.Size(20, 5))
+                                 10.0, 64, "t", ManyUITUI.Size(80, 24),
+                                 ManyUITUI.Size(20, 5))
     s = ManyUIWeb.Session("d"^32, () -> Counter(),
-                          ManyUI.STYLESHEET_EMPTY, cfg)
+                          ManyUITUI.STYLESHEET_EMPTY, cfg)
     hello = ManyUIWeb.ControlMessage(ManyUIWeb.ControlKind.HELLO,
                                      80, 24, "", true)
     ManyUIWeb.attach!(s, mk_ws(), hello)
@@ -191,7 +191,7 @@ end
     @test s.app.paused === true
 
     # A half-parsed CSI stranded by the drop.
-    ManyUI.feed_bytes!(s.driver, UInt8[0x1b, 0x5b])
+    ManyUITUI.feed_bytes!(s.driver, UInt8[0x1b, 0x5b])
     @test !isempty(s.driver.parser)
 
     # Reconnect within the timeout with a BRAND NEW socket.
@@ -214,7 +214,7 @@ end
 end
 
 @testitem "session: reap after the timeout expires" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
     import Sockets
     import HTTP
@@ -234,10 +234,10 @@ end
     # A 50 ms timeout: the policy is injected, so the test is fast.
     timeout = 0.05
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, timeout,
-                                 10.0, 64, "t", ManyUI.Size(80, 24),
-                                 ManyUI.Size(20, 5))
+                                 10.0, 64, "t", ManyUITUI.Size(80, 24),
+                                 ManyUITUI.Size(20, 5))
     s = ManyUIWeb.Session("e"^32, () -> Counter(),
-                          ManyUI.STYLESHEET_EMPTY, cfg)
+                          ManyUITUI.STYLESHEET_EMPTY, cfg)
     hello = ManyUIWeb.ControlMessage(ManyUIWeb.ControlKind.HELLO,
                                      80, 24, "", true)
     ManyUIWeb.attach!(s, ws, hello)
@@ -255,7 +255,7 @@ end
     ManyUIWeb.terminate!(s; deadline = 1.0)
     @test ManyUIWeb.state(s) === ManyUIWeb.SessionState.DEAD
     @test !isopen(s)
-    @test !isopen(ManyUI.events(s.driver))
+    @test !isopen(ManyUITUI.events(s.driver))
     @test !isopen(s.driver)
     @test s.task === nothing
     # A DEAD session can never expire again -- reap! must not re-kill.
@@ -264,7 +264,7 @@ end
 end
 
 @testitem "session: terminate! is idempotent" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
     import Sockets
 
@@ -276,10 +276,10 @@ end
     ManyUI.node(w::Counter) = w.node
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "t", ManyUI.Size(80, 24),
-                                 ManyUI.Size(20, 5))
+                                 10.0, 64, "t", ManyUITUI.Size(80, 24),
+                                 ManyUITUI.Size(20, 5))
     s = ManyUIWeb.Session("f"^32, () -> Counter(),
-                          ManyUI.STYLESHEET_EMPTY, cfg)
+                          ManyUITUI.STYLESHEET_EMPTY, cfg)
     ManyUIWeb.terminate!(s; deadline = 0.5)
     @test ManyUIWeb.state(s) === ManyUIWeb.SessionState.DEAD
     ManyUIWeb.terminate!(s; deadline = 0.5)   # must not throw
@@ -287,7 +287,7 @@ end
 end
 
 @testitem "session: terminate! never wedges on a full channel" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
     import Sockets
 
@@ -299,17 +299,17 @@ end
     ManyUI.node(w::Counter) = w.node
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "t", ManyUI.Size(80, 24),
-                                 ManyUI.Size(20, 5))
+                                 10.0, 64, "t", ManyUITUI.Size(80, 24),
+                                 ManyUITUI.Size(20, 5))
     s = ManyUIWeb.Session("9"^32, () -> Counter(),
-                          ManyUI.STYLESHEET_EMPTY, cfg)
+                          ManyUITUI.STYLESHEET_EMPTY, cfg)
 
     # Fill the event channel to capacity. `post!` -- and so `quit!` --
     # BLOCKS on a full channel, so a naive terminate! would hang the
     # reaper here forever. X5 is the one path that must never wedge.
-    ch = ManyUI.events(s.driver)
+    ch = ManyUITUI.events(s.driver)
     while Base.n_avail(ch) < ch.sz_max
-        put!(ch, ManyUI.RefreshEvent())
+        put!(ch, ManyUITUI.RefreshEvent())
     end
     @test Base.n_avail(ch) == ch.sz_max
 
@@ -320,7 +320,7 @@ end
 end
 
 @testitem "session: age and idle are pure in now" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import ManyUI
     import Sockets
 
@@ -332,10 +332,10 @@ end
     ManyUI.node(w::Counter) = w.node
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
-                                 10.0, 64, "t", ManyUI.Size(80, 24),
-                                 ManyUI.Size(20, 5))
+                                 10.0, 64, "t", ManyUITUI.Size(80, 24),
+                                 ManyUITUI.Size(20, 5))
     s = ManyUIWeb.Session("0"^32, () -> Counter(),
-                          ManyUI.STYLESHEET_EMPTY, cfg)
+                          ManyUITUI.STYLESHEET_EMPTY, cfg)
     @test ManyUIWeb.age(s, s.created + 12.0) == 12.0
     @test ManyUIWeb.idle(s, s.last_seen + 3.5) == 3.5
     ManyUIWeb.terminate!(s; deadline = 0.5)

@@ -19,7 +19,7 @@
 #   - Resize IS handled live: the app tracks the browser window's size.
 
 using ManyUIWeb
-using ManyUI: wait, stop!
+using ManyUI, ManyUITUI: wait, stop!
 using Tachikoma
 const T = Tachikoma
 

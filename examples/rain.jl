@@ -9,7 +9,7 @@
 # The diff earns its keep here. Only the cells that changed are sent, so
 # a mostly-still screen costs almost nothing even at 20 frames a second.
 
-using ManyUI
+using ManyUI, ManyUITUI
 using ManyUIWeb
 
 # Halfwidth katakana: one cell each, unlike their fullwidth cousins.
@@ -85,7 +85,7 @@ function step!(r::Rain)
     return nothing
 end
 
-function ManyUI.render!(r::Rain, buf::AbstractMatrix{Cell})
+function ManyUITUI.render!(r::Rain, buf::AbstractMatrix{Cell})
     width, height = size(buf)
     (width <= 0 || height <= 0) && return nothing
     for (x, d) in enumerate(r.drops)
@@ -155,7 +155,7 @@ function main()
     catch e
         e isa InterruptException || rethrow()
     finally
-        ManyUI.stop!(server)
+        ManyUITUI.stop!(server)
         println("stopped")
     end
 end

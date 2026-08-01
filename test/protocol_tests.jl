@@ -6,7 +6,7 @@
 # security property, not a convenience.
 
 @testitem "protocol: ControlMessage keyword defaults" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     const P = ManyUIWeb
 
     m = P.ControlMessage(P.ControlKind.PING)
@@ -25,7 +25,7 @@
 end
 
 @testitem "protocol: encode_control emits the documented shape" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     import JSON3
     const P = ManyUIWeb
 
@@ -40,7 +40,7 @@ end
 end
 
 @testitem "protocol: every kind round-trips" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     const P = ManyUIWeb
 
     for k in instances(P.ControlKind.T)
@@ -57,7 +57,7 @@ end
 end
 
 @testitem "protocol: decode_control never throws on hostile input" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     const P = ManyUIWeb
 
     # A malformed frame must yield `nothing`, never an exception: this
@@ -103,7 +103,7 @@ end
 end
 
 @testitem "protocol: decode_control fills missing fields with defaults" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
     const P = ManyUIWeb
 
     m = P.decode_control("{\"t\":\"hello\"}")

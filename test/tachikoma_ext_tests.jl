@@ -9,7 +9,7 @@
 # Tachikoma is absent.
 
 @testitem "tachikoma: serve_tachikoma is exported and stubbed" begin
-    using ManyUIWeb
+    using ManyUIWeb, ManyUITUI
 
     @test isdefined(ManyUIWeb, :serve_tachikoma)
     @test :serve_tachikoma in names(ManyUIWeb)
