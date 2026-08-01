@@ -23,7 +23,7 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.12'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Authenticate to private ManyUI.jl
         # See the identical step in CI.yml. ManyUI.jl is private and this
         # job's GITHUB_TOKEN cannot read it; the doc environment devs it by
