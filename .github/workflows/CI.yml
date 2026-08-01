@@ -54,7 +54,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Authenticate to private ManyUI.jl
         # ManyUI.jl is a PRIVATE repo. This job's default GITHUB_TOKEN is
         # scoped to ManyUIWeb.jl only and cannot read it, so the dev step
