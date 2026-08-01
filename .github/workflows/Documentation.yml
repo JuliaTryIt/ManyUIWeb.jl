@@ -64,9 +64,9 @@ jobs:
           Pkg.develop([
               PackageSpec(path=pwd()),
               PackageSpec(url="https://github.com/s-celles/ManyUI.jl"),
-              PackageSpec(url=\"https://github.com/s-celles/ManyUITUI.jl\"),
-              PackageSpec(url=\"https://github.com/s-celles/ManyUICLI.jl\"),
-              PackageSpec(url=\"https://github.com/s-celles/Tachikoma.jl\")
+              PackageSpec(url="https://github.com/s-celles/ManyUITUI.jl"),
+              PackageSpec(url="https://github.com/s-celles/ManyUICLI.jl"),
+              PackageSpec(url="https://github.com/s-celles/Tachikoma.jl")
           ])
           Pkg.instantiate()
       - name: Build documentation
