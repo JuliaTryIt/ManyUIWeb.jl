@@ -29,19 +29,19 @@ jobs:
         # job's GITHUB_TOKEN cannot read it; the doc environment devs it by
         # URL, so the clone needs a read-only PAT.
         #
-        # Requires repo secret DUALUI_READ_TOKEN: a fine-grained PAT with
+        # Requires repo secret MANYUI_READ_TOKEN: a fine-grained PAT with
         # Contents: Read-only on s-celles/ManyUI.jl. Delete this step once
         # ManyUI.jl is public or in the General registry.
         env:
-          DUALUI_READ_TOKEN: ${{ secrets.DUALUI_READ_TOKEN }}
+          MANYUI_READ_TOKEN: ${{ secrets.MANYUI_READ_TOKEN }}
         shell: bash
         run: |
-          if [ -z "$DUALUI_READ_TOKEN" ]; then
-            echo "::error::Secret DUALUI_READ_TOKEN is not set. ManyUI.jl is private and cannot be cloned without it."
+          if [ -z "$MANYUI_READ_TOKEN" ]; then
+            echo "::error::Secret MANYUI_READ_TOKEN is not set. ManyUI.jl is private and cannot be cloned without it."
             exit 1
           fi
           git config --global \
-            url."https://x-access-token:${DUALUI_READ_TOKEN}@github.com/".insteadOf \
+            url."https://x-access-token:${MANYUI_READ_TOKEN}@github.com/".insteadOf \
             "https://github.com/"
       - name: Configure doc environment
         env:
