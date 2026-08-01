@@ -54,7 +54,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3            - name: Authenticate to private repositories
+      - uses: julia-actions/cache@v3      - name: Authenticate to private repositories
         env:
           MANYUI_READ_TOKEN: ${{ secrets.MANYUI_READ_TOKEN }}
         shell: bash
@@ -63,7 +63,9 @@ jobs:
             echo "::error::Secret MANYUI_READ_TOKEN is not set. Repositories are private and cannot be cloned without it."
             exit 1
           fi
-          git config --global             url."https://x-access-token:${MANYUI_READ_TOKEN}@github.com/".insteadOf             "https://github.com/"
+          git config --global \
+            url."https://x-access-token:${MANYUI_READ_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
       - name: Dev unregistered dependencies
         env:
           JULIA_PKG_USE_CLI_GIT: "true"
