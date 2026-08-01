@@ -65,3 +65,4 @@ LocalPreferences.toml
 JuliaLocalPreferences.toml
 !justfile
 !README.md
+!/ext/**/*.jl
