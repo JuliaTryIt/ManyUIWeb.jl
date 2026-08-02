@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (breaking)
 
+- WebNative DOM events now mirror the Julia callback vocabulary exactly:
+  buttons dispatch `click`, selections dispatch `change`, activation
+  dispatches `submit`, and focus transitions dispatch `focus`/`blur`.
+  Selection changes no longer double-fire callbacks or implicitly submit.
+
 - The transport is now framework-neutral. The server, the WebSocket loop
   and the reaper are driven through two new interfaces -- `AbstractSession`
   (one connected client's app instance) and `AbstractFrontend` (mints one
@@ -26,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a decoded message rather than JSON.
 
 ### Added
+
+- A WebNative HTML/DOM projection with WebSocket updates and HTTP polling
+  fallback. It renders the core interactive widgets, preserves browser focus,
+  and routes `on_click`, `on_change`, `on_submit`, `on_focus`, and `on_blur`
+  back to their Julia widgets.
 
 - A Tachikoma frontend, as a package extension (`ManyUIWebTachikomaExt`,
   loaded when Tachikoma is present). `serve_tachikoma(() -> model; port)`

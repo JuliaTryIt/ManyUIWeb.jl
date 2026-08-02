@@ -14,7 +14,7 @@
 """
 The absolute path of an example, from this test file. Internal.
 """
-example_path(name) = joinpath(@__DIR__, "..", "examples", name)
+example_path(name) = joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", name)
 
 """
 Paint `w` at `sz` and return its rows as strings. Internal.
@@ -29,7 +29,7 @@ end
 
 @testitem "examples: gallery shows every widget" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "gallery.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "gallery.jl"))
 
     ui = gallery_app()
     apply_stylesheet!(SHEET, ui)
@@ -55,7 +55,7 @@ end
 
 @testitem "examples: unicode demo agrees with the width model" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "unicode.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "unicode.jl"))
 
     # The demo's own table is its assertion: each case declares the
     # width it must have, and that must be what text_width says.
@@ -85,7 +85,7 @@ end
 
 @testitem "examples: life oscillates a blinker" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "life.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "life.jl"))
 
     b = LifeBoard(24, 5)
     b.grid = falses(5, 24)
@@ -108,7 +108,7 @@ end
 
 @testitem "examples: rain falls without growing the tree" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "rain.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "rain.jl"))
 
     r = rain_app()
     apply_stylesheet!(SHEET, r)
@@ -138,7 +138,7 @@ end
 
 @testitem "examples: snake steers, eats and dies" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "snake.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "snake.jl"))
 
     s = snake_app()
     apply_stylesheet!(SHEET, s)
@@ -199,7 +199,7 @@ end
 
 @testitem "examples: datatable sorts 5000 rows without touching them" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "datatable.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "datatable.jl"))
 
     ui = table_app()
     apply_stylesheet!(SHEET, ui)
@@ -231,7 +231,7 @@ end
 
 @testitem "examples: dashboard filters its list" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "dashboard.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "dashboard.jl"))
 
     ui = dashboard_app()
     apply_stylesheet!(SHEET, ui)
@@ -265,7 +265,7 @@ end
 
 @testitem "examples: log follows the tail, then lets go" begin
     using ManyUI, ManyUITUI
-    include(joinpath(@__DIR__, "..", "examples", "scrollpane.jl"))
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos", "scrollpane.jl"))
 
     ui = log_app()
     apply_stylesheet!(SHEET, ui)

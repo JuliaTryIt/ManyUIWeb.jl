@@ -118,7 +118,7 @@ function session_attach!(s::TachikomaSession, ws, hello)
         s.w, s.h = hello.width, hello.height
     end
     if s.state === SessionState.NEW
-        model = s.factory()
+        model_or_loop = s.factory()
         # Per-server input source. Global, hence single-session; set before
         # `app`, so `app` does not try to dup fd 0 (which is not a tty here).
         T.INPUT_IO[] = s.instream
@@ -129,12 +129,19 @@ function session_attach!(s::TachikomaSession, ws, hello)
                 # and on every window change, and without this the app stays
                 # frozen at the connect size while xterm.js grows -- every
                 # line then drifts and the screen turns to noise.
-                T.app(model; io = s.out,
-                      tty_size = (rows = s.h, cols = s.w),
-                      on_terminal = t -> _on_terminal!(s, t))
-            catch
+                if model_or_loop isa Function
+                    model_or_loop(s.out, s.w, s.h, t -> _on_terminal!(s, t))
+                else
+                    T.app(model_or_loop; io = s.out,
+                          tty_size = (rows = s.h, cols = s.w),
+                          on_terminal = t -> _on_terminal!(s, t))
+                end
+            catch e
                 # A closed sink or dropped input ends the loop; that is the
                 # teardown path, not a failure to report.
+                if !(e isa ErrorException && occursin("WSOutIO is closed", e.msg))
+                    @warn "Session task crashed" exception=(e, catch_backtrace())
+                end
             finally
                 T.INPUT_IO[] = nothing
             end
@@ -217,7 +224,7 @@ function serve_tachikoma(factory; host = ManyUIWeb.Sockets.localhost,
                        multi_session = false,   # process-global I/O: one app
                        kwargs...)
     server = ManyUIWeb.WebServer(TachikomaFrontend(factory); config = cfg)
-    return ManyUI.start!(server)
+    return ManyUIWeb.ManyUITUI.start!(server)
 end
 
 end # module
