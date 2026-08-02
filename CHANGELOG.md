@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `WebNativeServer` now implements `Base.isopen`, completing the common
+  `isopen`/`close`/`wait` launch-handle contract used by every backend.
 - WebNative now emits valid JavaScript for its `morphdom` update path. The
   malformed call previously stopped the entire browser script, preventing
   interactions such as text `on_change` and button `on_click` callbacks.

@@ -791,6 +791,7 @@ end
 
 Base.wait(server::WebNativeServer) = Base.wait(server.http_server)
 Base.close(server::WebNativeServer) = Base.close(server.http_server)
+Base.isopen(server::WebNativeServer)::Bool = isopen(server.http_server)
 ManyUITUI.stop!(server::WebNativeServer) = close(server)
 
 # Fake back buffer for animated demos

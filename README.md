@@ -13,3 +13,13 @@ For the complete API reference, features overview, quickstart guides, and advanc
 ```julia
 import Pkg; Pkg.add("ManyUIWeb")
 ```
+
+Non-blocking launches return the same lifecycle contract as other ManyUI
+backends:
+
+```julia
+server = launch(ui, WebNative(); wait=false)
+isopen(server)
+close(server)
+wait(server)
+```

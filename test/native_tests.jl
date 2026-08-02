@@ -8,9 +8,11 @@
 
     @test server isa ManyUIWeb.WebNativeServer
     @test server.http_server isa HTTP.Server
+    @test isopen(server)
 
     # Close it
     Base.close(server)
+    @test !isopen(server)
 end
 
 @testitem "native: generate_document contains CSS and JS" begin
