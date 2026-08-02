@@ -59,6 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- WebNative now emits valid JavaScript for its `morphdom` update path. The
+  malformed call previously stopped the entire browser script, preventing
+  interactions such as text `on_change` and button `on_click` callbacks.
 - Session ids are drawn from `Random.RandomDevice()` rather than by
   reading `/dev/urandom` by hand. That path does not exist on Windows, so
   every session id draw threw `SystemError` there and no session could be

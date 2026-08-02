@@ -25,6 +25,7 @@ end
     @test occursin("<style>", html)
     @test occursin("function connect()", html)
     @test occursin("ws = new WebSocket", html)
+    @test occursin("                });\n            } else {", html)
 end
 
 @testitem "native: DOM callback names match the Julia API" begin

@@ -579,6 +579,7 @@ function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative"
                             }
                             return true;
                         }
+                    });
                 } else {
                     document.body.innerHTML = html;
                 }
