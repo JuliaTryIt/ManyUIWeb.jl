@@ -1,14 +1,14 @@
 name = "ManyUIWeb"
 uuid = "860779a1-443a-41b2-91c8-bd1f5a115e61"
-authors = ["Sebastien Celles <s.celles@gmail.com>"]
 version = "0.1.0"
+authors = ["Sebastien Celles <s.celles@gmail.com>"]
 
 [deps]
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
-ManyUI = "4f14d67d-91c5-4d6b-929d-6ac291535b21"
-ManyUITUI = "5c52c6f3-12e3-46fb-a0b2-3b2e56cfefb8"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+ManyUI = "4f14d67d-91c5-4d6b-929d-6ac291535b21"
+ManyUITUI = "5c52c6f3-12e3-46fb-a0b2-3b2e56cfefb8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 
@@ -16,17 +16,15 @@ Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 Tachikoma = "468859d6-42d8-48b7-8ad9-1d312e0e3b0a"
 
 [extensions]
-# Loaded only when Tachikoma is present. Needs a Tachikoma that accepts an
-# `io=` sink (PR #39); until that is upstream, dev a patched Tachikoma.
 ManyUIWebTachikomaExt = "Tachikoma"
 
 [compat]
 Aqua = "0.8"
 DocStringExtensions = "0.9"
+HTTP = "1, 2"
+JSON3 = "1"
 ManyUI = "0.1"
 ManyUITUI = "0.1"
-HTTP = "1"
-JSON3 = "1"
 Random = "1"
 Sockets = "1"
 Tachikoma = "2"
