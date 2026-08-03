@@ -29,6 +29,13 @@ struct WebBackend <: ManyUITUI.Backend
     config::ServerConfig
 end
 
+ManyUI.backend_available(::WebBackend) = true
+ManyUI.backend_kind(::WebBackend) = :webtui
+ManyUI.backend_capabilities(::WebBackend) = merge(
+    ManyUI.DEFAULT_BACKEND_CAPABILITIES,
+    (transparency = false, native_window = false, gpu = false,
+     multi_session = true))
+
 """
 $(SIGNATURES)
 

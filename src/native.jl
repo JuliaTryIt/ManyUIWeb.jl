@@ -808,6 +808,13 @@ struct WebNativeServer
     broadcast_update::Function
 end
 
+ManyUI.backend_available(::ManyUI.WebNative) = true
+ManyUI.backend_kind(::ManyUI.WebNative) = :webnative
+ManyUI.backend_capabilities(::ManyUI.WebNative) = merge(
+    ManyUI.DEFAULT_BACKEND_CAPABILITIES,
+    (transparency = true, native_window = false, gpu = true,
+     multi_session = true))
+
 Base.wait(server::WebNativeServer) = Base.wait(server.http_server)
 Base.close(server::WebNativeServer) = Base.close(server.http_server)
 Base.isopen(server::WebNativeServer)::Bool = isopen(server.http_server)
