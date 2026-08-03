@@ -54,7 +54,8 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3      - name: Authenticate to private repositories
+      - uses: julia-actions/cache@v3
+      - name: Authenticate to private repositories
         env:
           MANYUI_READ_TOKEN: ${{ secrets.MANYUI_READ_TOKEN }}
         shell: bash
