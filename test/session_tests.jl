@@ -123,9 +123,7 @@ end
     ManyUI.node(w::Counter) = w.node
 
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
                                  10.0, 64, "t", ManyUITUI.Size(80, 24),
@@ -173,9 +171,8 @@ end
 
     mk_ws = function ()
         io = Base.BufferStream()
-        conn = HTTP.Connections.Connection(io)
-        return HTTP.WebSockets.WebSocket(conn, HTTP.Request(),
-                                         HTTP.Response(); client = false)
+        return HTTP.WebSockets.WebSocket(io, () -> nothing;
+                                         is_client = false)
     end
 
     cfg = ManyUIWeb.ServerConfig(Sockets.localhost, 8000, true, 300.0,
@@ -227,9 +224,7 @@ end
     ManyUI.node(w::Counter) = w.node
 
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
 
     # A 50 ms timeout: the policy is injected, so the test is fast.
     timeout = 0.05

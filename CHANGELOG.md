@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (breaking)
 
+- ManyUIWeb now requires HTTP.jl 2 instead of retaining HTTP.jl 1 support.
+- JSON3.jl has been replaced by JSON.jl 1, its officially recommended
+  successor.
+
 - WebNative DOM events now mirror the Julia callback vocabulary exactly:
   buttons dispatch `click`, selections dispatch `change`, activation
   dispatches `submit`, and focus transitions dispatch `focus`/`blur`.

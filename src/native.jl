@@ -2,7 +2,7 @@
 
 using ManyUI
 import HTTP
-import JSON3
+import JSON
 
 "True when `w` exposes a widget-wide boolean `disabled` reactive."
 function _is_disabled(w::ManyUI.Widget)::Bool
@@ -832,7 +832,7 @@ function serve_native(model, proj::ManyUI.Projection, port::Int=8080)
 
     function broadcast_update()
         html = to_html(last_root[])
-        msg = JSON3.write(Dict("type" => "update", "html" => html))
+        msg = JSON.json(Dict("type" => "update", "html" => html))
         for ws in copy(ws_connections)
             try
                 HTTP.WebSockets.send(ws, msg)
@@ -854,11 +854,11 @@ function serve_native(model, proj::ManyUI.Projection, port::Int=8080)
                 try
                     for msg in ws
                         if msg isa String
-                            payload = JSON3.read(msg)
+                            payload = JSON.parse(msg)
                             process_event(payload)
                         elseif msg isa Vector{UInt8}
                             str = String(msg)
-                            payload = JSON3.read(str)
+                            payload = JSON.parse(str)
                             process_event(payload)
                         end
                     end
@@ -876,19 +876,19 @@ function serve_native(model, proj::ManyUI.Projection, port::Int=8080)
         elseif http.message.target == "/poll" && http.message.method == "GET"
             # Fallback polling
             html = to_html(last_root[])
-            msg = JSON3.write(Dict("html" => html))
+            msg = JSON.json(Dict("html" => html))
             HTTP.setstatus(http, 200)
             HTTP.setheader(http, "Content-Type" => "application/json")
             write(http, msg)
         elseif http.message.target == "/dispatch" && http.message.method == "POST"
             # Handle incoming event from fetch
             body = read(http)
-            payload = JSON3.read(body)
+            payload = JSON.parse(body)
             process_event(payload)
 
             root = last_root[]
             html = root !== nothing ? to_html(root) : ""
-            msg = JSON3.write(Dict("html" => html))
+            msg = JSON.json(Dict("html" => html))
             HTTP.setstatus(http, 200)
             HTTP.setheader(http, "Content-Type" => "application/json")
             write(http, msg)

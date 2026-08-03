@@ -52,9 +52,7 @@ end
 
     # A real WebSocket whose transport is an in-memory stream.
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
 
     d = WebSocketDriver()
     hello = ManyUIWeb.ControlMessage(ManyUIWeb.ControlKind.HELLO,
@@ -115,9 +113,7 @@ end
     import HTTP
 
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
 
     d = WebSocketDriver(; outbox = 2)
     ManyUITUI.start!(d)
@@ -176,9 +172,7 @@ end
     import HTTP
 
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
 
     d = WebSocketDriver()
     ManyUITUI.start!(d)
@@ -200,9 +194,7 @@ end
     import HTTP
 
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
 
     d = WebSocketDriver()
     ManyUITUI.start!(d)
@@ -227,9 +219,7 @@ end
     import HTTP
 
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
 
     d = WebSocketDriver()
     ManyUITUI.start!(d)
@@ -304,9 +294,7 @@ end
     # tty. It lives in attach! and not start! because a RECONNECT calls
     # attach! alone.
     io = Base.BufferStream()
-    conn = HTTP.Connections.Connection(io)
-    ws = HTTP.WebSockets.WebSocket(conn, HTTP.Request(), HTTP.Response();
-                                   client = false)
+    ws = HTTP.WebSockets.WebSocket(io, () -> nothing; is_client = false)
     d = WebSocketDriver()
     hello = ManyUIWeb.ControlMessage(ManyUIWeb.ControlKind.HELLO,
                                      100, 30, "", true)

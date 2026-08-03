@@ -16,7 +16,7 @@ module ManyUIWeb
 using ManyUI, ManyUITUI
 using DocStringExtensions
 import HTTP
-import JSON3
+import JSON
 import Random
 import Sockets
 

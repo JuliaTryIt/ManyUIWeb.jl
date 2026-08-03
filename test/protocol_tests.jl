@@ -26,12 +26,12 @@ end
 
 @testitem "protocol: encode_control emits the documented shape" begin
     using ManyUIWeb, ManyUITUI
-    import JSON3
+    import JSON
     const P = ManyUIWeb
 
     m = P.ControlMessage(P.ControlKind.HELLO; width = 120, height = 40,
                          session = "ab", truecolor = true)
-    o = JSON3.read(P.encode_control(m))
+    o = JSON.parse(P.encode_control(m))
     @test o.t == "hello"
     @test o.w == 120
     @test o.h == 40

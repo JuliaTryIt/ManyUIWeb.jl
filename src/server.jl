@@ -180,12 +180,10 @@ Throws `PortInUseError` when `config.port` is taken.
 function ManyUITUI.start!(s::WebServer)::WebServer
     started = Base.@lock s.lock begin
         if s.server === nothing
-            # `_bind` throws BEFORE anything is mutated, so a refused
+            # `_listen` throws BEFORE anything is mutated, so a refused
             # port leaves `s` exactly as it was: still stoppable, still
             # restartable on another port.
-            listener = _bind(s.config)
-            s.server = HTTP.listen!(http -> _serve_stream(s, http),
-                                    listener; verbose = -1)
+            s.server = _listen(s)
             s.running = true
             true
         else
@@ -203,17 +201,18 @@ function ManyUITUI.start!(s::WebServer)::WebServer
 end
 
 """
-Open the listening socket, turning a bind refusal into a sentence.
+Open the HTTP server, turning a bind refusal into a sentence.
 
-`port == 0` routes through libuv's `listenany`, which is what makes the
-OS-assigned port readable afterwards via `bound_port`. Internal.
+`port == 0` uses HTTP.jl's `listenany`, which is what makes the OS-assigned
+port readable afterwards via `bound_port`. Internal.
 """
-function _bind(cfg::ServerConfig)::HTTP.Servers.Listener
+function _listen(s::WebServer)::HTTP.Server
+    cfg = s.config
     try
-        return HTTP.Servers.Listener(cfg.host, cfg.port;
-                                     listenany = cfg.port == 0,
-                                     reuseaddr = true,
-                                     verbose = -1)
+        return HTTP.listen!(http -> _serve_stream(s, http),
+                            string(cfg.host), cfg.port;
+                            listenany = cfg.port == 0,
+                            reuseaddr = true)
     catch e
         _is_addr_in_use(e) && throw(PortInUseError(cfg.host, cfg.port))
         rethrow()
@@ -221,15 +220,34 @@ function _bind(cfg::ServerConfig)::HTTP.Servers.Listener
 end
 
 """
-True when `e` is libuv's "address already in use".
+True when `e` represents "address already in use".
 
-Matched on the errno rather than on the message text, which is libuv's
-to reword. Every other bind failure -- a privileged port, a bad
+HTTP 2 may expose its typed error or wrap Réseau's platform `SystemError`
+inside the asynchronous listener task. Match typed errors and errnos rather
+than message text. Every other bind failure -- a privileged port, a bad
 interface -- keeps its own error, because only this one has advice worth
 giving. Internal.
 """
-_is_addr_in_use(e)::Bool =
-    e isa Base.IOError && e.code == Base.UV_EADDRINUSE
+function _is_addr_in_use(e)::Bool
+    if e isa TaskFailedException
+        return any(Base.current_exceptions(e.task)) do entry
+            _is_addr_in_use(entry.exception)
+        end
+    end
+    if e isa HTTP.AddressInUseError ||
+       (e isa Base.IOError && e.code == Base.UV_EADDRINUSE) ||
+       (e isa SystemError && e.errnum == Base.Libc.EADDRINUSE)
+        return true
+    end
+    # HTTP 2 delegates binding to Reseau, whose public operation error keeps
+    # the platform SystemError in an `err` field. Avoid a direct dependency
+    # on the lower transport while still matching the underlying errno.
+    if hasfield(typeof(e), :err)
+        cause = getfield(e, :err)
+        return cause isa Exception && _is_addr_in_use(cause)
+    end
+    return false
+end
 
 """
 W1 / req 2.4. Build a server over `factory` and start listening.
@@ -336,7 +354,7 @@ configured port while the server is not listening.
 """
 function bound_port(s::WebServer)::Int
     srv = Base.@lock s.lock (s.server)
-    return srv === nothing ? s.config.port : HTTP.Servers.port(srv)
+    return srv === nothing ? s.config.port : HTTP.port(srv)
 end
 
 """
@@ -412,9 +430,9 @@ The health probe body: what an operator or a load balancer needs to know
 without opening a session. Internal.
 """
 _healthz(s::WebServer)::String =
-    JSON3.write((sessions = length(sessions(s)),
-                 max_sessions = s.config.max_sessions,
-                 multi_session = s.config.multi_session))
+    JSON.json((sessions = length(sessions(s)),
+               max_sessions = s.config.max_sessions,
+               multi_session = s.config.multi_session))
 
 """
 The one HTTP entry point: upgrade `/ws`, serve everything else.
@@ -426,19 +444,23 @@ touches the stream. Internal.
 function _serve_stream(s::WebServer, http::HTTP.Stream)::Nothing
     req = http.message
     if HTTP.WebSockets.isupgrade(req) && _request_path(req) == WS_PATH
-        HTTP.WebSockets.upgrade(ws -> handle_ws(s, ws), http;
-                                suppress_close_error = true)
+        HTTP.WebSockets.upgrade(ws -> handle_ws(s, ws), http)
         return nothing
     end
-    req.body = read(http)
+    # HTTP 2 requests are parametric in their body type, so replacing the
+    # body field after construction is invalid. This route table accepts
+    # only GET requests and does not consume a body; drain it from the
+    # stream without mutating the request metadata.
+    read(http)
     r = handle_http(s, req)
     HTTP.setstatus(http, r.status)
     for (k, v) in r.headers
         HTTP.setheader(http, k => v)
     end
-    HTTP.setheader(http, "Content-Length" => string(length(r.body)))
+    body = copy(r.body)
+    HTTP.setheader(http, "Content-Length" => string(length(body)))
     HTTP.startwrite(http)
-    write(http, r.body)
+    write(http, body)
     return nothing
 end
 

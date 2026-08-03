@@ -67,8 +67,8 @@ const _KIND_OF = Dict{String,ControlKind.T}(t => k for (k, t) in _KIND_TAGS)
 Encode `m` as a JSON text frame. Pure.
 """
 encode_control(m::ControlMessage)::String =
-    JSON3.write((t = _TAG_OF[m.kind], w = m.width, h = m.height,
-                 session = m.session, tc = m.truecolor))
+    JSON.json((t = _TAG_OF[m.kind], w = m.width, h = m.height,
+               session = m.session, tc = m.truecolor))
 
 """
 `o[k]` when it is a non-negative integer, else `default`.
@@ -77,7 +77,7 @@ A dimension is the one field a client can use to reach the layout
 engine, so a non-integer, negative or non-finite value is dropped to
 the default rather than forwarded. Pure. Internal.
 """
-function _int_field(o, k::Symbol, default::Int)::Int
+function _int_field(o, k::AbstractString, default::Int)::Int
     haskey(o, k) || return default
     v = o[k]
     v isa Bool && return default
@@ -94,7 +94,7 @@ end
 """
 `o[k]` when it is a string, else `default`. Pure. Internal.
 """
-function _string_field(o, k::Symbol, default::String)::String
+function _string_field(o, k::AbstractString, default::String)::String
     haskey(o, k) || return default
     v = o[k]
     return v isa AbstractString ? String(v) : default
@@ -103,7 +103,7 @@ end
 """
 `o[k]` when it is a boolean, else `default`. Pure. Internal.
 """
-function _bool_field(o, k::Symbol, default::Bool)::Bool
+function _bool_field(o, k::AbstractString, default::Bool)::Bool
     haskey(o, k) || return default
     v = o[k]
     return v isa Bool ? v : default
@@ -117,18 +117,18 @@ client must not be able to crash a session with malformed JSON. Pure.
 """
 function decode_control(s::AbstractString)::Union{Nothing,ControlMessage}
     try
-        o = JSON3.read(s)
-        o isa JSON3.Object || return nothing
-        haskey(o, :t) || return nothing
-        tag = o[:t]
+        o = JSON.parse(s)
+        o isa JSON.Object || return nothing
+        haskey(o, "t") || return nothing
+        tag = o["t"]
         tag isa AbstractString || return nothing
         kind = get(_KIND_OF, String(tag), nothing)
         kind === nothing && return nothing
         return ControlMessage(kind;
-                              width = _int_field(o, :w, 0),
-                              height = _int_field(o, :h, 0),
-                              session = _string_field(o, :session, ""),
-                              truecolor = _bool_field(o, :tc, true))
+                              width = _int_field(o, "w", 0),
+                              height = _int_field(o, "h", 0),
+                              session = _string_field(o, "session", ""),
+                              truecolor = _bool_field(o, "tc", true))
     catch
         # Deliberately total: the caller is a receive loop on an
         # untrusted socket, and every malformed frame is the same
