@@ -19,6 +19,17 @@
     @test WebBackend(; multi_session = false).config.multi_session == false
 end
 
+@testitem "backend: WebTUI and WebNative advertise portable capabilities" begin
+    using ManyUIWeb, ManyUITUI
+    using ManyUI
+
+    @test ManyUI.backend_available(WebBackend())
+    @test ManyUI.backend_kind(WebBackend()) == :webtui
+    @test ManyUI.backend_kind(ManyUI.WebNative()) == :webnative
+    @test ManyUI.backend_capabilities(WebBackend()).multi_session
+    @test ManyUI.backend_capabilities(ManyUI.WebNative()).transparency
+end
+
 @testitem "backend: WebBackend defines no make_driver" begin
     using ManyUIWeb, ManyUITUI
     using ManyUI, ManyUITUI
