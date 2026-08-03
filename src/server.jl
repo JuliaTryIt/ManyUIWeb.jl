@@ -212,6 +212,7 @@ function _bind(cfg::ServerConfig)::HTTP.Servers.Listener
     try
         return HTTP.Servers.Listener(cfg.host, cfg.port;
                                      listenany = cfg.port == 0,
+                                     reuseaddr = true,
                                      verbose = -1)
     catch e
         _is_addr_in_use(e) && throw(PortInUseError(cfg.host, cfg.port))

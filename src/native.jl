@@ -224,6 +224,17 @@ function to_html(w::ManyUI.Widget)
             push!(rows_html, html)
         end
         inner = join(rows_html, "\n")
+    elseif w isa ManyUI.Spinner
+        tag = "span"
+        push!(classes, "manyui-spinner")
+        class_str = " class=\"$(join(classes, " "))\""
+        inner = w.frames[w.tick[]]
+    elseif w isa ManyUI.Slider
+        tag = "input"
+        push!(classes, "manyui-slider")
+        class_str = " class=\"$(join(classes, " "))\""
+        disabled_str = _is_disabled(w) ? " disabled" : ""
+        id_str = """ id="$(node.id)" type="range" min="$(w.min)" max="$(w.max)" step="$(w.step)" value="$(w.value[])" oninput="dispatch_event('$(node.id)', 'change', parseFloat(this.value))"$disabled_str"""
     else
         # Generic container
         for child in node.children
@@ -768,6 +779,14 @@ function process_native_event!(root::ManyUI.Widget, data)::Bool
         else
             return false
         end
+    elseif w isa ManyUI.Slider
+        event_name == "change" || return false
+        value === nothing && return false
+        val = parse(Float64, string(value))
+        if w.value[] != val
+            w.value[] = clamp(val, w.min, w.max)
+            w.on_change(w)
+        end
     else
         return false
     end
@@ -801,7 +820,9 @@ end
 ManyUITUI.buffer_size(b::MockBuffer) = b.size
 
 # trigger a re-render when a background task posts an event
-ManyUI.post!(app::WebNativeSessionApp, evt) = nothing
+function ManyUI.post!(app::WebNativeSessionApp, evt)
+    ManyUITUI.dispatch_event!(app.root, evt, nothing)
+end
 ManyUI.post!(server::WebNativeServer, evt) = server.broadcast_update()
 
 function serve_native(model, proj::ManyUI.Projection, port::Int=8080)
@@ -826,7 +847,7 @@ function serve_native(model, proj::ManyUI.Projection, port::Int=8080)
         broadcast_update()
     end
 
-    server = HTTP.listen!(port) do http
+    server = HTTP.listen!(port; reuseaddr=true) do http
         if http.message.target == "/ws" && HTTP.WebSockets.isupgrade(http.message)
             HTTP.WebSockets.upgrade(http) do ws
                 push!(ws_connections, ws)
