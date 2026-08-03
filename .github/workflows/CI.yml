@@ -67,6 +67,9 @@ jobs:
           git config --global \
             url."https://x-access-token:${MANYUI_READ_TOKEN}@github.com/".insteadOf \
             "https://github.com/"
+      - name: Check out demo fixtures
+        shell: bash
+        run: git clone --depth 1 https://github.com/s-celles/ManyUIDemos.jl ../ManyUIDemos
       - name: Dev unregistered dependencies
         env:
           JULIA_PKG_USE_CLI_GIT: "true"
