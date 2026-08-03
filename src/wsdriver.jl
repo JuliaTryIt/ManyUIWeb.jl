@@ -267,6 +267,7 @@ function attach!(d::WebSocketDriver, ws::HTTP.WebSockets.WebSocket,
         d.connected = true
         if hello.width > 0 && hello.height > 0
             d.size = ManyUITUI.Size(hello.width, hello.height)
+            ManyUITUI.notify_resize!(d, d.size)
         end
         depth = hello.truecolor ? ManyUITUI.ColorDepth.TRUECOLOR :
                                   ManyUITUI.ColorDepth.ANSI256
