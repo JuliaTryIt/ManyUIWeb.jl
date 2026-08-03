@@ -847,7 +847,7 @@ function serve_native(model, proj::ManyUI.Projection, port::Int=8080)
         broadcast_update()
     end
 
-    server = HTTP.listen!(port; reuseaddr=true) do http
+    server = HTTP.listen!(port; reuseaddr=_server_reuseaddr()) do http
         if http.message.target == "/ws" && HTTP.WebSockets.isupgrade(http.message)
             HTTP.WebSockets.upgrade(http) do ws
                 push!(ws_connections, ws)

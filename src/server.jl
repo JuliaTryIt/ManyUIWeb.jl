@@ -212,12 +212,20 @@ function _listen(s::WebServer)::HTTP.Server
         return HTTP.listen!(http -> _serve_stream(s, http),
                             string(cfg.host), cfg.port;
                             listenany = cfg.port == 0,
-                            reuseaddr = true)
+                            reuseaddr = _server_reuseaddr())
     catch e
         _is_addr_in_use(e) && throw(PortInUseError(cfg.host, cfg.port))
         rethrow()
     end
 end
+
+"""
+Whether listeners may reuse a recently bound address.
+
+Winsock's `SO_REUSEADDR` permits a second live listener on the same port,
+unlike Unix, defeating `PortInUseError`. Internal.
+"""
+_server_reuseaddr()::Bool = !Sys.iswindows()
 
 """
 True when `e` represents "address already in use".

@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Server listeners disable address reuse on Windows, where Winsock otherwise
+  permits two HTTP servers to bind the same port instead of reporting it busy.
 - `WebNativeServer` now implements `Base.isopen`, completing the common
   `isopen`/`close`/`wait` launch-handle contract used by every backend.
 - WebNative now emits valid JavaScript for its `morphdom` update path. The
