@@ -227,7 +227,7 @@ function to_html(w::ManyUI.Widget)
     elseif w isa ManyUI.Spinner
         tag = "span"
         push!(classes, "manyui-spinner")
-        class_str = " class=\"$(join(classes, " "))\""
+        class_str = " class=\"$(join(classes, " "))\" data-tick=\"$(w.tick[])\""
         inner = w.frames[w.tick[]]
     elseif w isa ManyUI.Slider
         tag = "input"
@@ -564,6 +564,15 @@ function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative"
             }
             ::-webkit-scrollbar-thumb:hover {
                 background: rgba(255,255,255,0.3);
+            }
+
+            /* Fallback minimums for the document */
+            html, body {
+                margin: 0;
+                padding: 0;
+                background-color: #000000;
+                color: #ffffff;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             }
         </style>
         <script>
