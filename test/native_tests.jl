@@ -241,3 +241,21 @@ end
         ManyUI.set_theme!(before)
     end
 end
+
+@testitem "native: a Splitter projects as a flex row with its handles" begin
+    import ManyUI
+    import ManyUIWeb
+
+    sp = ManyUI.Splitter(ManyUI.Label("left"), ManyUI.Label("right");
+                         weights = [3, 1])
+    ManyUI.apply_stylesheet!(ManyUI.STYLESHEET_EMPTY, sp)
+    html = ManyUIWeb.to_html(sp)
+
+    @test occursin("display: flex", html)
+    @test occursin("flex-direction: row", html)
+    # The weights survive as flex-grow, so the browser splits the row
+    # the same way the terminal does.
+    @test occursin("flex-grow: 3", html)
+    @test occursin("flex-grow: 1", html)
+    @test occursin("left", html) && occursin("right", html)
+end
