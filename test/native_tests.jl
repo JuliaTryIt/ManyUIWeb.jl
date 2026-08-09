@@ -171,3 +171,35 @@ end
     html = ManyUIWeb.to_html(ManyUI.Label(rt))
     @test occursin("color: rgb(", html)
 end
+
+@testitem "native: a rich List format reaches the DOM as spans" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # format may now return a RichText, so every callback the HTML
+    # projection interpolates has to go through the same helper the
+    # Label does -- otherwise the page gets the struct's repr.
+    warn = ManyUI.Style(fg = ManyUI.rgb(255, 0, 0))
+    fmt = x -> ManyUI.RichText(ManyUI.TextRun("!", warn), ManyUI.TextRun(x))
+    l = ManyUI.List(["boom"]; format = fmt)
+
+    html = ManyUIWeb.to_html(l)
+    @test occursin("color: rgb(255, 0, 0)", html)
+    @test occursin(">!</span>", html)
+    @test occursin("boom", html)
+    @test !occursin("RichText", html)
+end
+
+@testitem "native: a rich Table cell reaches the DOM as spans" begin
+    import ManyUI
+    import ManyUIWeb
+
+    bold = ManyUI.Style(bold = true)
+    t = ManyUI.Table([1], [ManyUI.Column("N")];
+                     cell = (r, j) -> ManyUI.RichText(
+                         ManyUI.TextRun("a", bold), ManyUI.TextRun("b")))
+
+    html = ManyUIWeb.to_html(t)
+    @test occursin("font-weight: bold", html)
+    @test !occursin("RichText", html)
+end

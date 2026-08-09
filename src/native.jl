@@ -27,6 +27,8 @@ it would emit an empty span per word. The whole-line fast path matters
 for the same reason: an ordinary `Label` is one unstyled run and must
 not start paying for markup it does not use.
 """
+_rich_html(s::AbstractString)::String = String(s)
+
 function _rich_html(rt::ManyUI.RichText)::String
     isempty(rt.runs) && return ""
     if length(rt.runs) == 1 && rt.runs[1].style == ManyUI.STYLE_NONE
@@ -181,7 +183,7 @@ function to_html(w::ManyUI.Widget)
         items_html = []
         for (i, item) in enumerate(w.items)
             sel_class = i == w.sel.cursor ? " manyui-list-selected" : ""
-            push!(items_html, """<div class="manyui-list-item$sel_class" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(w.format(item))</div>""")
+            push!(items_html, """<div class="manyui-list-item$sel_class" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(_rich_html(w.format(item)))</div>""")
         end
         inner = join(items_html, "\n")
     elseif w isa ManyUI.DataTable || w isa ManyUI.Table
@@ -205,7 +207,7 @@ function to_html(w::ManyUI.Widget)
                 sel_class = source_i == w.sel.cursor ? " class=\"manyui-table-selected\"" : ""
                 inner *= "<tr$sel_class onclick=\"dispatch_event('$(node.id)', 'change', $k)\" ondblclick=\"dispatch_event('$(node.id)', 'submit', $k)\">"
                 for j in 1:length(w.grid.cols)
-                    val = w.cell(row, j)
+                    val = _rich_html(w.cell(row, j))
                     inner *= "<td>$val</td>"
                 end
                 inner *= "</tr>"
@@ -215,7 +217,7 @@ function to_html(w::ManyUI.Widget)
                 sel_class = source_i == w.sel.cursor ? " class=\"manyui-table-selected\"" : ""
                 inner *= "<tr$sel_class onclick=\"dispatch_event('$(node.id)', 'change', $source_i)\" ondblclick=\"dispatch_event('$(node.id)', 'submit', $source_i)\">"
                 for j in 1:length(w.grid.cols)
-                    val = w.cell(row, j)
+                    val = _rich_html(w.cell(row, j))
                     inner *= "<td>$val</td>"
                 end
                 inner *= "</tr>"
@@ -235,7 +237,7 @@ function to_html(w::ManyUI.Widget)
         lst = w.panel.list
         for (i, item) in enumerate(lst.items)
             sel = i == w.selected[] ? " selected" : ""
-            push!(options, "<option value=\"$i\"$sel>$(lst.format(item))</option>")
+            push!(options, "<option value=\"$i\"$sel>$(_rich_html(lst.format(item)))</option>")
         end
         inner = join(options, "\n")
     elseif w isa ManyUI.RadioGroup
@@ -263,7 +265,7 @@ function to_html(w::ManyUI.Widget)
             twisty = has_children ? (ManyUI.is_expanded(row.node) ? "▼ " : "▶ ") : "  "
             html = """<div class="manyui-tree-row$sel_class" style="padding-left: $(pad)px;">"""
             html *= """<span class="manyui-tree-twisty" onclick="dispatch_event('$(node.id)', 'toggle', $i); event.stopPropagation();">$twisty</span>"""
-            html *= """<span class="manyui-tree-label" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(w.format(row.node.value))</span>"""
+            html *= """<span class="manyui-tree-label" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(_rich_html(w.format(row.node.value)))</span>"""
             html *= "</div>"
             push!(rows_html, html)
         end
