@@ -11,9 +11,15 @@ function _is_disabled(w::ManyUI.Widget)::Bool
     return value isa Bool && value
 end
 
-"`c` as a CSS `rgb(...)`, converting a palette colour on the way."
+"""
+`c` as a CSS `rgb(...)`, converting a palette colour on the way.
+
+A theme token is resolved FIRST, for the reason the TUI resolves inside
+`color_seq!`: this is where an authorial-intent colour meets a device,
+and it is the only place that has to know what `warning` means today.
+"""
 function _css_color(c::ManyUI.Color)::String
-    rgb = ManyUI.to_rgb(c)
+    rgb = ManyUI.to_rgb(ManyUI.resolve_token(c))
     return "rgb($(Int(rgb.r)), $(Int(rgb.g)), $(Int(rgb.b)))"
 end
 

@@ -220,3 +220,24 @@ end
     @test occursin("body", html)
     @test length(ManyUI.children(c)) == 1
 end
+
+@testitem "native: a theme token resolves on the way to CSS" begin
+    import ManyUI
+    import ManyUIWeb
+
+    before = ManyUI.theme()
+    try
+        ManyUI.set_theme!(:dark)
+        rt = ManyUI.RichText("x", ManyUI.Style(fg = ManyUI.token(:accent)))
+        dark = ManyUIWeb.to_html(ManyUI.Label(rt))
+        @test occursin("color: rgb(", dark)
+        @test !occursin("TOKEN", dark)
+
+        # The same tree, a different palette, different CSS. Nothing was
+        # rebuilt between the two.
+        ManyUI.set_theme!(:light)
+        @test ManyUIWeb.to_html(ManyUI.Label(rt)) != dark
+    finally
+        ManyUI.set_theme!(before)
+    end
+end
