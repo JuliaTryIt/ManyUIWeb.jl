@@ -282,7 +282,12 @@ function to_html(w::ManyUI.Widget)
         disabled_str = _is_disabled(w) ? " disabled" : ""
         id_str = """ id="$(node.id)" type="range" min="$(w.min)" max="$(w.max)" step="$(w.step)" value="$(w.value[])" oninput="dispatch_event('$(node.id)', 'change', parseFloat(this.value))"$disabled_str"""
     else
-        # Generic container
+        # Generic container. A border caption is chrome, not a child, so
+        # it is emitted here rather than mounted -- exactly as the TUI
+        # paints it on the border rather than in the content box.
+        cap = ManyUI.border_title(w)
+        isempty(cap) ||
+            (inner *= "<div class=\"manyui-panel-title\">$(_rich_html(cap))</div>")
         for child in node.children
             inner *= to_html(child)
         end

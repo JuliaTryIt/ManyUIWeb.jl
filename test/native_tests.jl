@@ -203,3 +203,20 @@ end
     @test occursin("font-weight: bold", html)
     @test !occursin("RichText", html)
 end
+
+@testitem "native: a captioned Container shows its caption" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # The TUI paints the caption on the border; the DOM has no border
+    # row to paint on, so it becomes a leading element instead. Either
+    # way it is chrome, never a child -- mounting it would put it in the
+    # tab order and in the layout.
+    c = ManyUI.Container(ManyUI.Label("body"); title = "Server Log")
+    html = ManyUIWeb.to_html(c)
+
+    @test occursin("manyui-panel-title", html)
+    @test occursin("Server Log", html)
+    @test occursin("body", html)
+    @test length(ManyUI.children(c)) == 1
+end
