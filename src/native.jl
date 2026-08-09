@@ -11,6 +11,50 @@ function _is_disabled(w::ManyUI.Widget)::Bool
     return value isa Bool && value
 end
 
+"`c` as a CSS `rgb(...)`, converting a palette colour on the way."
+function _css_color(c::ManyUI.Color)::String
+    rgb = ManyUI.to_rgb(c)
+    return "rgb($(Int(rgb.r)), $(Int(rgb.g)), $(Int(rgb.b)))"
+end
+
+"""
+A `RichText` as HTML: one `<span>` per run that specifies something,
+bare text for the runs that do not.
+
+A run whose style is `STYLE_NONE` says "the widget's own style", which
+in the DOM is what the enclosing element already provides -- wrapping
+it would emit an empty span per word. The whole-line fast path matters
+for the same reason: an ordinary `Label` is one unstyled run and must
+not start paying for markup it does not use.
+"""
+function _rich_html(rt::ManyUI.RichText)::String
+    isempty(rt.runs) && return ""
+    if length(rt.runs) == 1 && rt.runs[1].style == ManyUI.STYLE_NONE
+        return rt.runs[1].text
+    end
+    io = IOBuffer()
+    for r in rt.runs
+        props = String[]
+        ManyUI.is_set(r.style.fg) &&
+            push!(props, "color: $(_css_color(r.style.fg))")
+        ManyUI.is_set(r.style.bg) &&
+            push!(props, "background-color: $(_css_color(r.style.bg))")
+        ManyUI.has(r.style, ManyUI.Attr.BOLD) &&
+            push!(props, "font-weight: bold")
+        ManyUI.has(r.style, ManyUI.Attr.ITALIC) &&
+            push!(props, "font-style: italic")
+        ManyUI.has(r.style, ManyUI.Attr.UNDERLINE) &&
+            push!(props, "text-decoration: underline")
+        if isempty(props)
+            write(io, r.text)
+        else
+            write(io, "<span style=\"", join(props, "; "), "\">",
+                  r.text, "</span>")
+        end
+    end
+    return String(take!(io))
+end
+
 """
 Convert a ManyUI Widget tree into an HTML string.
 """
@@ -90,7 +134,7 @@ function to_html(w::ManyUI.Widget)
 
     if w isa ManyUI.Label
         tag = "span"
-        inner = w.text[]
+        inner = _rich_html(w.text[])
     elseif w isa ManyUI.Button
         tag = "button"
         disabled_str = _is_disabled(w) ? " disabled" : ""

@@ -127,3 +127,47 @@ end
     @test dropdown_changes[] == 1
     @test tree_changes[] == 1
 end
+
+@testitem "native: a plain Label is a bare span" begin
+    import ManyUI
+    import ManyUIWeb
+
+    html = ManyUIWeb.to_html(ManyUI.Label("hello"))
+    @test occursin(">hello<", html)
+    # Nothing to style, so no nested span is emitted: the common case
+    # must not pay for the feature.
+    @test !occursin("<span style", html)
+end
+
+@testitem "native: a RichText Label emits one styled span per run" begin
+    import ManyUI
+    import ManyUIWeb
+
+    warn = ManyUI.Style(fg = ManyUI.rgb(255, 200, 0), bold = true)
+    rt = ManyUI.RichText(ManyUI.TextRun("1", warn), ManyUI.TextRun(" Server"))
+
+    html = ManyUIWeb.to_html(ManyUI.Label(rt))
+
+    # The styled run carries its own colour and weight ...
+    @test occursin("color: rgb(255, 200, 0)", html)
+    @test occursin("font-weight: bold", html)
+    @test occursin(">1</span>", html)
+    # ... and the unstyled run stays bare text rather than being wrapped
+    # in an empty span.
+    @test occursin(" Server", html)
+    @test count("<span style", html) == 1
+
+    # Whatever the styling, the text is all there and in order.
+    @test occursin("1", html) && occursin("Server", html)
+end
+
+@testitem "native: an ANSI colour on a run converts to CSS rgb" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # A run may name a palette colour; the browser only speaks rgb, so
+    # it has to be converted rather than dropped.
+    rt = ManyUI.RichText("x", ManyUI.Style(fg = ManyUI.ansi16(1)))
+    html = ManyUIWeb.to_html(ManyUI.Label(rt))
+    @test occursin("color: rgb(", html)
+end
