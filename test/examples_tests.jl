@@ -337,3 +337,77 @@ end
         @test occursin("need none of them", msg)
     end
 end
+
+@testitem "examples: the monitor rebuilds a real screen" begin
+    using ManyUI, ManyUITUI
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos",
+                     "monitor.jl"))
+
+    # This demo exists to answer a question a feature checklist cannot:
+    # could ManyUI render the Server tab of a real Tachikoma
+    # application? These assertions are that answer, so they check the
+    # five things that were inexpressible before the parity work --
+    # not merely that something painted.
+    ui = monitor_app()
+    apply_stylesheet!(SHEET, ui)
+    layout!(ui, Region(1, 1, 62, 16))
+    buf = Buffer(Size(62, 16))
+    clear!(buf)
+    paint!(buf, ui)
+    rows = [join(String(buf.cells[x, y].content) for x in 1:62)
+            for y in 1:16]
+
+    # 1. A tab strip whose shortcut key is coloured INSIDE the caption.
+    @test occursin("1 Server", rows[1])
+    @test occursin("2 Sessions", rows[1])
+    key = buf.cells[2, 1]
+    @test String(key.content) == "1"
+    @test has(key.style, Attr.BOLD)
+    @test key.style.fg != buf.cells[4, 1].style.fg   # "S" of Server
+
+    # 2. Captioned frames, with the caption ON the border.
+    @test occursin("╭─ Server Status ", rows[2])
+    @test occursin("╭─ Server Log (9) ", rows[6])
+
+    # 3. A log list that colours only its level column.
+    warnrow = findfirst(r -> occursin("warn", r), rows)
+    @test warnrow !== nothing
+    lvl = findfirst("warn", rows[warnrow])
+    @test buf.cells[first(lvl), warnrow].style.fg !=
+          buf.cells[1, warnrow].style.fg              # level vs timestamp
+    @test buf.cells[first(lvl), warnrow].style.fg !=
+          buf.cells[first(lvl) + 6, warnrow].style.fg # level vs message
+
+    # 4. A status bar that puts its two ends where they belong.
+    @test startswith(rows[end], "localhost:2828")
+    @test endswith(rstrip(rows[end]), "q:quit")
+
+    # 5. A palette named by TOKENS. The screen names `--accent`, never a
+    #    hex value, so the SAME tree serves every theme.
+    accent = buf.cells[2, 1].style.fg               # the "1" of "1 Server"
+    @test is_token(accent)
+
+    before = theme()
+    try
+        set_theme!(:dark)
+        d = Buffer(Size(62, 16)); clear!(d); paint!(d, ui)
+        set_theme!(:light)
+        l = Buffer(Size(62, 16)); clear!(l); paint!(l, ui)
+
+        # The two buffers are IDENTICAL, and that is the design rather
+        # than a bug: a token becomes a colour at EMISSION, so nothing
+        # in the tree or the buffer holds a resolved one. It is also
+        # exactly why set_theme! owes the caller a full repaint -- the
+        # frame diff compares these cells and finds nothing.
+        @test isempty(ManyUITUI.diff(d, l).spans)
+
+        # The difference lives one layer down, where a colour meets a
+        # device.
+        set_theme!(:dark);  dark = resolve_token(accent)
+        set_theme!(:light); light = resolve_token(accent)
+        @test !is_token(dark) && !is_token(light)
+        @test dark != light
+    finally
+        set_theme!(before)
+    end
+end
