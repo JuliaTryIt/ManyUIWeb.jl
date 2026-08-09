@@ -246,7 +246,10 @@ end
     box.on_submit(box)                  # what ENTER calls
     @test row_count(list) == 4
     @test list.items == ["Julia", "Elixir", "Common Lisp", "Kotlin"]
-    @test occursin("4 of", hits.text[])
+    # `plain`, because a Label's cell holds a RichText now. This
+    # assertion was unreachable while the file failed to load at all,
+    # which is exactly what a masked failure buys you.
+    @test occursin("4 of", plain(hits.text[]))
 
     # Clearing it puts everything back. Cleared by backspacing, the way
     # a user would: `set_text!` exists for TextArea but NOT TextInput.
@@ -302,4 +305,35 @@ end
                                        MOD_NONE), lv)
     end
     @test lv.follow
+end
+
+@testitem "examples: a demo loads without a GPU stack" begin
+    using ManyUI, ManyUITUI
+    include(joinpath(@__DIR__, "..", "..", "ManyUIDemos", "demos",
+                     "gallery.jl"))
+
+    # THE regression this file exists to prevent. Every demo used to
+    # `import CImGui, GLFW, ModernGL` at the top, so including one for
+    # its widget tree dragged in a GPU stack -- and every testitem in
+    # this file failed on a machine without one, silently, for long
+    # enough that a real assertion below it went unchecked.
+    #
+    # No demo uses a symbol from any of the three. Building the widgets
+    # must need none of them.
+    @test gallery_app() isa Widget
+    @test HAS_CIMGUI isa Bool
+
+    # And when the backend is genuinely absent, a CImGui mode refuses
+    # with a message naming what is missing, rather than an
+    # UndefVarError on a package name.
+    if !HAS_CIMGUI
+        @test_throws ErrorException _need_cimgui()
+        msg = try
+            _need_cimgui()
+        catch e
+            sprint(showerror, e)
+        end
+        @test occursin("CImGui", msg)
+        @test occursin("need none of them", msg)
+    end
 end
