@@ -357,34 +357,57 @@ end
     rows = [join(String(buf.cells[x, y].content) for x in 1:62)
             for y in 1:16]
 
+    # Rows are found by CONTENT, never by index: adding a frame round
+    # the screen shifted every one of them, and a test that pins a
+    # layout rather than a capability breaks on every cosmetic change.
+    rowof(pat) = findfirst(r -> occursin(pat, r), rows)
+    # A row contains box-drawing glyphs, so a BYTE index is not a CELL
+    # column. Every lookup below goes through this.
+    function colof(row, pat)
+        r = findfirst(pat, row)
+        r === nothing && return nothing
+        return length(row[1:prevind(row, first(r))]) + 1
+    end
+
     # 1. A tab strip whose shortcut key is coloured INSIDE the caption.
-    @test occursin("1 Server", rows[1])
-    @test occursin("2 Sessions", rows[1])
-    key = buf.cells[2, 1]
+    tabrow = rowof("1 Server")
+    @test tabrow !== nothing
+    @test occursin("2 Sessions", rows[tabrow])
+    kx = colof(rows[tabrow], "1 Server")
+    key = buf.cells[kx, tabrow]
     @test String(key.content) == "1"
     @test has(key.style, Attr.BOLD)
-    @test key.style.fg != buf.cells[4, 1].style.fg   # "S" of Server
+    @test key.style.fg != buf.cells[kx + 2, tabrow].style.fg   # "S"
 
     # 2. Captioned frames, with the caption ON the border.
-    @test occursin("╭─ Server Status ", rows[2])
-    @test occursin("╭─ Server Log (9) ", rows[6])
+    @test rowof("─ Server Status ") !== nothing
+    @test rowof("─ Server Log (9) ") !== nothing
+    @test rowof("─ ManyUI monitor ") !== nothing     # the outer frame
 
-    # 3. A log list that colours only its level column.
-    warnrow = findfirst(r -> occursin("warn", r), rows)
+    # 3. A log list where the stamp and level carry and the message
+    #    recedes -- a log is scanned down its left edge.
+    warnrow = rowof("warn")
     @test warnrow !== nothing
-    lvl = findfirst("warn", rows[warnrow])
-    @test buf.cells[first(lvl), warnrow].style.fg !=
-          buf.cells[1, warnrow].style.fg              # level vs timestamp
-    @test buf.cells[first(lvl), warnrow].style.fg !=
-          buf.cells[first(lvl) + 6, warnrow].style.fg # level vs message
+    lvl = colof(rows[warnrow], "warn")
+    stamp = colof(rows[warnrow], "10:42:23")
+    @test buf.cells[lvl, warnrow].style.fg !=
+          buf.cells[stamp, warnrow].style.fg
+    @test buf.cells[lvl, warnrow].style.fg !=
+          buf.cells[lvl + 6, warnrow].style.fg        # level vs message
+    @test buf.cells[stamp, warnrow].style.fg !=
+          buf.cells[lvl + 6, warnrow].style.fg        # stamp vs message
 
     # 4. A status bar that puts its two ends where they belong.
-    @test startswith(rows[end], "localhost:2828")
-    @test endswith(rstrip(rows[end]), "q:quit")
+    barrow = rowof("localhost:2828")
+    @test barrow !== nothing
+    @test occursin("q:quit", rows[barrow])
+    @test colof(rows[barrow], "localhost:2828") <
+          colof(rows[barrow], "q:quit")
 
     # 5. A palette named by TOKENS. The screen names `--accent`, never a
     #    hex value, so the SAME tree serves every theme.
-    accent = buf.cells[2, 1].style.fg               # the "1" of "1 Server"
+    trow = findfirst(r -> occursin("1 Server", r), rows)
+    accent = buf.cells[colof(rows[trow], "1 Server"), trow].style.fg
     @test is_token(accent)
 
     before = theme()
