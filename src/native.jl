@@ -874,6 +874,23 @@ struct WebNativeServer
     broadcast_update::Function
 end
 
+"""
+The port `s` actually bound, which is what a caller that asked for port
+`0` needs.
+"""
+bound_port(s::WebNativeServer)::Int = Int(HTTP.port(s.http_server))
+
+"""
+The URL `s` is reachable at.
+
+One verb for both server types. `WebServer` already answered `url`,
+`WebNativeServer` did not, and every demo that launched WebNative and
+printed its address hit a MethodError -- unnoticed, because a demo's
+`main` is never called by a test.
+"""
+url(s::WebNativeServer)::String =
+    string("http://127.0.0.1:", bound_port(s), "/")
+
 ManyUI.backend_available(::ManyUI.WebNative) = true
 ManyUI.backend_kind(::ManyUI.WebNative) = :webnative
 ManyUI.backend_capabilities(::ManyUI.WebNative) = merge(

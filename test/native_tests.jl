@@ -259,3 +259,24 @@ end
     @test occursin("flex-grow: 1", html)
     @test occursin("left", html) && occursin("right", html)
 end
+
+@testitem "native: a WebNative server answers url, like the other one" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # One verb for both server types. WebServer answered `url`,
+    # WebNativeServer did not, so every demo that launched WebNative and
+    # printed its address hit a MethodError -- unnoticed, because a
+    # demo's `main` is never called by a test.
+    model = () -> ManyUI.Label("hi")
+    server = ManyUIWeb.serve_native(model, ManyUI.WebNative(), 0)
+    try
+        @test ManyUIWeb.bound_port(server) > 0
+        u = ManyUIWeb.url(server)
+        @test startswith(u, "http://")
+        @test endswith(u, "/")
+        @test occursin(string(ManyUIWeb.bound_port(server)), u)
+    finally
+        Base.close(server)
+    end
+end
