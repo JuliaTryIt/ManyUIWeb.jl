@@ -50,6 +50,19 @@ pane renders as an image instead of its braille fallback.
 const XTERM_IMAGE_VERSION = "0.8.0"
 
 """
+Pinned `@xterm/addon-unicode-graphemes` version. Makes xterm.js measure
+GRAPHEME CLUSTERS rather than codepoints, so a ZWJ sequence such as
+👨‍👩‍👧‍👦 occupies one cell pair instead of four that overlap.
+"""
+const XTERM_UNICODE_GRAPHEMES_VERSION = "0.4.0"
+
+"""
+Pinned `@xterm/addon-ligatures` version. Lets the font form its
+ligatures rather than drawing each codepoint on its own.
+"""
+const XTERM_LIGATURES_VERSION = "0.9.0"
+
+"""
 CDN origin. Every subresource is https, version-pinned and
 integrity-pinned.
 """
@@ -84,6 +97,19 @@ The pinned SIXEL image addon. Defines `window.ImageAddon.ImageAddon`.
 """
 const XTERM_IMAGE_JS_URL =
     "$(XTERM_CDN)/@xterm/addon-image@$(XTERM_IMAGE_VERSION)/lib/addon-image.js"
+
+"""
+The pinned Unicode graphemes addon. Defines
+`window.UnicodeGraphemesAddon.UnicodeGraphemesAddon`.
+"""
+const XTERM_UNICODE_GRAPHEMES_JS_URL =
+    "$(XTERM_CDN)/@xterm/addon-unicode-graphemes@$(XTERM_UNICODE_GRAPHEMES_VERSION)/lib/addon-unicode-graphemes.js"
+
+"""
+The pinned ligatures addon. Defines `window.LigaturesAddon.LigaturesAddon`.
+"""
+const XTERM_LIGATURES_JS_URL =
+    "$(XTERM_CDN)/@xterm/addon-ligatures@$(XTERM_LIGATURES_VERSION)/lib/addon-ligatures.js"
 
 # ------------------------------------------------- the client contract
 

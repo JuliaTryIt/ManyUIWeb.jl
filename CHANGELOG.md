@@ -63,6 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Render ZWJ emoji sequences as one glyph in the browser terminal.
+  xterm.js measured codepoints rather than grapheme clusters, so
+  👨‍👩‍👧‍👦 was drawn as four one-cell characters overlapping each other on
+  the grid. The Unicode-graphemes and ligatures addons are now loaded
+  (version- and integrity-pinned like every other subresource), the
+  font stack puts a colour emoji face first, and the canvas renderer is
+  no longer used -- it splits ZWJ sequences, while the DOM renderer
+  emits spans the browser composes correctly.
 - Server listeners disable address reuse on Windows, where Winsock otherwise
   permits two HTTP servers to bind the same port instead of reporting it busy.
 - `WebNativeServer` now implements `Base.isopen`, completing the common

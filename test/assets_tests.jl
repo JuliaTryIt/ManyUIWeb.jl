@@ -215,24 +215,28 @@ end
     @test occursin("<script src=\"", html)
     @test occursin("<link rel=\"stylesheet\"", html)
 
-    # Every remote subresource is integrity-pinned and https. Five now:
-    # xterm.js, its CSS, the fit addon, the canvas renderer and the SIXEL
-    # image addon.
+    # Every remote subresource is integrity-pinned and https. Seven now:
+    # xterm.js, its CSS, the fit addon, the canvas renderer, the SIXEL
+    # image addon, the Unicode graphemes addon and the ligatures addon.
     @test !occursin("http://cdn", html)
     n_sri = count(_ -> true, eachmatch(r"integrity=\"sha384-", html))
-    @test n_sri == 5
+    @test n_sri == 7
     n_cdn = count(_ -> true, eachmatch(r"https://cdn\.jsdelivr\.net", html))
-    @test n_cdn == 5
-    @test count(_ -> true, eachmatch(r"crossorigin=", html)) == 5
+    @test n_cdn == 7
+    @test count(_ -> true, eachmatch(r"crossorigin=", html)) == 7
 
     @test occursin(ManyUIWeb.XTERM_JS_URL, html)
     @test occursin(ManyUIWeb.XTERM_CSS_URL, html)
     @test occursin(ManyUIWeb.XTERM_FIT_JS_URL, html)
     @test occursin(ManyUIWeb.XTERM_CANVAS_JS_URL, html)
     @test occursin(ManyUIWeb.XTERM_IMAGE_JS_URL, html)
+    @test occursin(ManyUIWeb.XTERM_UNICODE_GRAPHEMES_JS_URL, html)
+    @test occursin(ManyUIWeb.XTERM_LIGATURES_JS_URL, html)
     for u in (ManyUIWeb.XTERM_JS_URL, ManyUIWeb.XTERM_CSS_URL,
               ManyUIWeb.XTERM_FIT_JS_URL, ManyUIWeb.XTERM_CANVAS_JS_URL,
-              ManyUIWeb.XTERM_IMAGE_JS_URL)
+              ManyUIWeb.XTERM_IMAGE_JS_URL,
+              ManyUIWeb.XTERM_UNICODE_GRAPHEMES_JS_URL,
+              ManyUIWeb.XTERM_LIGATURES_JS_URL)
         @test startswith(u, "https://")
     end
 end

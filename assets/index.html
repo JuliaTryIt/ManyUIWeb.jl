@@ -82,6 +82,20 @@
     src="https://cdn.jsdelivr.net/npm/@xterm/addon-image@0.8.0/lib/addon-image.js"
     integrity="sha384-c8cp6ttBbOCWdIK+9ah6WF5Z9Kl9UMfuRUneie8t3tsEPIBD3TkSP3e5CyNT22kI"
     crossorigin="anonymous"></script>
+<!-- Unicode Graphemes addon. Prevents complex emojis and ZWJ sequences from rendering
+     as multiple 1-cell wide characters and overlapping each other on the grid.
+     Integrity-pinned like every other subresource here: the test suite counts
+     them, and an unpinned CDN script is a supply-chain hole. -->
+<script
+    src="https://cdn.jsdelivr.net/npm/@xterm/addon-unicode-graphemes@0.4.0/lib/addon-unicode-graphemes.js"
+    integrity="sha384-Gef8dZJ2AgQlFvUbRK+DK87JQ1p3YLsiGhcBO4z8/mYrDgeoVvbHcVVDUU+8mOh7"
+    crossorigin="anonymous"></script>
+<!-- Ligatures addon: lets the font form a ligature instead of drawing each
+     codepoint separately. -->
+<script
+    src="https://cdn.jsdelivr.net/npm/@xterm/addon-ligatures@0.9.0/lib/addon-ligatures.js"
+    integrity="sha384-NIR6E9v1zjLdo413dEYZ1f0tOSr2jRhoH5vtc+eTLmPBVcnsr8co5e41YurPOGTO"
+    crossorigin="anonymous"></script>
 
 <script>
 "use strict";
@@ -145,7 +159,7 @@ function makeTerminal() {
     convertEol: false,
     cursorBlink: true,
     scrollback: 0,
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+    fontFamily: "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', ui-monospace, SFMono-Regular, Menlo, monospace",
     fontSize: 14,
     theme: { background: "#101014", foreground: "#d8d8dc" }
   });
@@ -155,11 +169,9 @@ function makeTerminal() {
   // Canvas renderer after open() -- it needs the mounted element. If it
   // ever fails to load, xterm.js stays on the DOM renderer: striped
   // glyphs, but working.
-  try {
-    if (typeof CanvasAddon !== "undefined") {
-      term.loadAddon(new CanvasAddon.CanvasAddon());
-    }
-  } catch (e) { /* DOM renderer fallback */ }
+  // Disabled CanvasAddon because it breaks ZWJ emoji sequences by splitting them.
+  // We rely on the fallback DOM renderer which creates `<span>`s, allowing
+  // the browser to natively form complex emojis like 👨‍👩‍👧‍👦.
   // SIXEL decoder, so pixel panes render as images. Harmless when the
   // server never emits SIXEL.
   try {
@@ -167,6 +179,19 @@ function makeTerminal() {
       term.loadAddon(new ImageAddon.ImageAddon());
     }
   } catch (e) { /* no image support: pixel panes stay as their fallback */ }
+  // Unicode Graphemes for proper ZWJ and emoji clustering
+  try {
+    if (typeof UnicodeGraphemesAddon !== "undefined") {
+      term.loadAddon(new UnicodeGraphemesAddon.UnicodeGraphemesAddon());
+      term.unicode.activeVersion = '15-graphemes';
+    }
+  } catch (e) { /* unicode 6 fallback */ }
+  // Font ligatures for ZWJ sequences and font ligatures
+  try {
+    if (typeof LigaturesAddon !== "undefined") {
+      term.loadAddon(new LigaturesAddon.LigaturesAddon());
+    }
+  } catch (e) { /* fallback */ }
   fit.fit();
 
   // Keystrokes. xterm.js also routes SGR (1006) mouse reports through
