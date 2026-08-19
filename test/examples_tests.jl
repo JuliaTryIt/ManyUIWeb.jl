@@ -326,15 +326,34 @@ end
     # And when the backend is genuinely absent, a CImGui mode refuses
     # with a message naming what is missing, rather than an
     # UndefVarError on a package name.
+    #
+    # The guard is a MACRO and it does not throw: it prints what is
+    # missing and RETURNS 0 from the enclosing function, so someone
+    # without a GPU stack gets an explanation instead of a stacktrace.
+    # That `return` is exactly why it cannot be a plain function, and
+    # why it can only be written inside one.
     if !HAS_CIMGUI
-        @test_throws ErrorException _need_cimgui()
-        msg = try
-            _need_cimgui()
-        catch e
-            sprint(showerror, e)
+        refuse() = (@need_cimgui(); :reached_the_backend)
+
+        pipe = Pipe()
+        Base.link_pipe!(pipe)
+        saved = stdout
+        redirect_stdout(pipe.in)
+        result = try
+            refuse()
+        finally
+            redirect_stdout(saved)
+            close(pipe.in)
         end
+        msg = read(pipe, String)
+
+        # It refused: the backend line was never reached.
+        @test result == 0
         @test occursin("CImGui", msg)
         @test occursin("need none of them", msg)
+        # And it says WHERE the GPU stack lives, which is the whole
+        # point of refusing with a message.
+        @test occursin("CImGuiEnv", msg)
     end
 end
 
