@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **An embedded fragment's tabs were inert, and every panel showed at once.**
+  `generate_document` ships a client that turns a `dispatch_event` into a server
+  round trip; a fragment has none, so the tab strip's handlers pointed at nothing
+  — and, worse, the inactive panels were never hidden, because that is what the
+  live runtime would have done.
+
+  Switching a tab is a view concern and every panel is already in the markup, so
+  a fragment now carries the small behaviour that does it, scoped to its own root
+  so two fragments on a page do not drive each other.
+
+  Found by clicking the tabs of a real admin panel and having nothing happen.
+
+
+### Fixed
+
 - **ManyUIWeb could not be resolved by anyone who depended on it.** None of the
   ManyUI stack is registered, and this package declared no `[sources]`, so a
   consumer had to redeclare `ManyUITUI` as a direct dependency of its own just to

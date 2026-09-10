@@ -763,6 +763,47 @@ const FRAGMENT_GROUND = "background: #14002b; color: #ffffff; " *
     "padding: 1rem; border-radius: 12px;"
 
 """
+The behaviour an embedded fragment needs to stand on its own.
+
+`generate_document` ships a client that turns a `dispatch_event` into a server
+round trip. A fragment has none, so its tab strip's handlers pointed at nothing
+and every panel rendered at once — the live runtime is what would have hidden
+the inactive ones.
+
+Switching a tab is a VIEW concern and every panel is already in the markup, so
+the fragment does it itself. Scoped to its own root, so two fragments on a page
+do not drive each other.
+"""
+const FRAGMENT_BEHAVIOUR = raw"""
+(function () {
+  var root = document.currentScript && document.currentScript.previousElementSibling;
+  if (!root) return;
+  root.querySelectorAll('.manyui-tabs').forEach(function (tabs) {
+    var strip = tabs.querySelector('.manyui-tabstrip');
+    if (!strip) return;
+    var captions = Array.prototype.slice.call(strip.querySelectorAll('.manyui-tab'));
+    var panels = Array.prototype.filter.call(tabs.children, function (c) {
+      return c !== strip;
+    });
+    function show(index) {
+      captions.forEach(function (c, i) {
+        c.classList.toggle('manyui-tab-selected', i === index);
+      });
+      panels.forEach(function (p, i) { p.hidden = i !== index; });
+    }
+    captions.forEach(function (caption, i) {
+      caption.removeAttribute('onclick');
+      caption.addEventListener('click', function () { show(i); });
+    });
+    var initial = captions.findIndex(function (c) {
+      return c.classList.contains('manyui-tab-selected');
+    });
+    show(initial < 0 ? 0 : initial);
+  });
+})();
+"""
+
+"""
     fragment_html(w; id) -> String
 
 One widget as an **embeddable fragment**: its markup plus the rules it needs,
@@ -786,7 +827,8 @@ function fragment_html(w::ManyUI.Widget; id::AbstractString = "manyui-fragment")
     ground = string("#", id, " { ", FRAGMENT_GROUND, " }")
     return string("<style>", ground, "\n#", id, " {\n", NATIVE_CSS, "\n}</style>",
                   "<div id=\"", id, "\" class=\"manyui-fragment\">",
-                  to_html(w), "</div>")
+                  to_html(w), "</div>",
+                  "<script class=\"manyui-fragment-tabs\">", FRAGMENT_BEHAVIOUR, "</script>")
 end
 
 """

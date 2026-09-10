@@ -484,3 +484,22 @@ end
     # fetch would fail on an offline install.
     @test !occursin("fonts.googleapis", frag)
 end
+
+@testitem "native: a fragment's tabs switch without a live runtime" begin
+    import ManyUI, ManyUIWeb
+
+    # A fragment has no `dispatch_event`: that lives in `generate_document`'s
+    # client. So the tab strip's handlers pointed at nothing, and — worse —
+    # every panel showed at once, because hiding the inactive ones is what the
+    # live runtime would have done. Switching a tab is a VIEW concern and every
+    # panel is already in the DOM, so the fragment can do it itself.
+    tabs = ManyUI.Tabs("One" => ManyUI.Label("first"),
+                       "Two" => ManyUI.Label("second"))
+    frag = ManyUIWeb.fragment_html(tabs; id = "frag1")
+
+    @test occursin("manyui-tab", frag)
+    @test occursin("first", frag) && occursin("second", frag)
+    # A behaviour script, and one that does not need the live client.
+    @test occursin("manyui-fragment-tabs", frag)
+    @test !occursin("dispatch_event(", split(frag, "<script")[end])
+end
