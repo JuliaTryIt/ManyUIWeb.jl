@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The webfont is deliberately left out of a fragment: the host owns its
   typography, and fetching a remote font would fail on an offline install.
 
+  A fragment paints its own ground. `NATIVE_CSS`'s page rules select `body`,
+  which a fragment has none of, so without one it took the host's background
+  and font — and ManyUI's palette is chosen against a dark page, so the result
+  had almost no contrast. Found by embedding a panel in a deliberately
+  light-themed host page and looking at it.
+
   The stylesheet is now `NATIVE_CSS`, a constant rather than a heredoc inside
   `generate_document`, which is what makes it available to a fragment at all.
   `to_html`, `fragment_html` and `generate_document` are exported.

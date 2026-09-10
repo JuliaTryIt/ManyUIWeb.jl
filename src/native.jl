@@ -752,6 +752,17 @@ function to_html(w::ManyUI.Widget)
 end
 
 """
+The ground an embedded fragment paints for itself.
+
+`NATIVE_CSS`'s page rules select `body`, which a fragment has none of, so a
+fragment would otherwise take the host's background and font — and ManyUI's
+colours are chosen against a dark page.
+"""
+const FRAGMENT_GROUND = "background: #14002b; color: #ffffff; " *
+    "font-family: ui-monospace, SFMono-Regular, Menlo, monospace; " *
+    "padding: 1rem; border-radius: 12px;"
+
+"""
     fragment_html(w; id) -> String
 
 One widget as an **embeddable fragment**: its markup plus the rules it needs,
@@ -768,7 +779,12 @@ out: the host owns its typography, and fetching one would fail on an offline
 install.
 """
 function fragment_html(w::ManyUI.Widget; id::AbstractString = "manyui-fragment")
-    return string("<style>#", id, " {\n", NATIVE_CSS, "\n}</style>",
+    # The page rules in NATIVE_CSS select `body`, which matches nothing inside a
+    # fragment — so without this the fragment inherits the HOST's background and
+    # font, and ManyUI's palette, designed for a dark page, loses its contrast.
+    # The fragment carries its own ground instead.
+    ground = string("#", id, " { ", FRAGMENT_GROUND, " }")
+    return string("<style>", ground, "\n#", id, " {\n", NATIVE_CSS, "\n}</style>",
                   "<div id=\"", id, "\" class=\"manyui-fragment\">",
                   to_html(w), "</div>")
 end
