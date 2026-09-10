@@ -194,7 +194,6 @@ function to_html(w::ManyUI.Widget)
         inner = join(items_html, "\n")
     elseif w isa ManyUI.DataTable || w isa ManyUI.Table
         tag = "table"
-        push!(classes, "manyui-datatable")
         class_str = " class=\"$(join(classes, " "))\""
 
         # Header
@@ -287,6 +286,16 @@ function to_html(w::ManyUI.Widget)
         class_str = " class=\"$(join(classes, " "))\""
         disabled_str = _is_disabled(w) ? " disabled" : ""
         id_str = """ id="$(node.id)" type="range" min="$(w.min)" max="$(w.max)" step="$(w.step)" value="$(w.value[])" oninput="dispatch_event('$(node.id)', 'change', parseFloat(this.value))"$disabled_str"""
+    elseif w isa ManyUI.StatusBar
+        # Three slots held in FIELDS, not children -- the same shape that made a
+        # `TabStrip` render as an empty box. Emitted as three cells so the
+        # browser's own `space-between` does what the terminal does by padding.
+        slots = String[]
+        for (slot, place) in ((w.left[], "left"), (w.center[], "center"),
+                              (w.right[], "right"))
+            push!(slots, """<div class="manyui-statusbar-$place">$(_rich_html(slot))</div>""")
+        end
+        inner = join(slots)
     elseif w isa ManyUI.TabStrip
         # A strip's captions live in `titles`, NOT as children, so the generic
         # branch below emitted an empty box: three blank rectangles where
@@ -433,6 +442,15 @@ function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative"
                 background: rgba(255, 255, 255, 0.16);
                 border-color: rgba(255, 255, 255, 0.35);
                 font-weight: 600;
+            }
+
+            .manyui-statusbar {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+                width: 100%;
             }
 
             .manyui-label {

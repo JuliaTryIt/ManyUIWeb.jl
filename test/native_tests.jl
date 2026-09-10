@@ -343,3 +343,39 @@ end
     @test occursin("flex-direction: row", doc)
     @test occursin(".manyui-tab-selected", doc)
 end
+
+@testitem "native: a status bar projects its three slots" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # Same family as the tab strip: a StatusBar's content lives in `left`,
+    # `center` and `right`, not in children, so the generic container branch had
+    # nothing to walk and emitted an empty node. Found by rebuilding the
+    # KaimonSlateDesktop status panel, whose footer simply vanished.
+    bar = ManyUI.StatusBar(; left = ManyUI.RichText(ManyUI.TextRun("KaimonSlateDesktop")),
+                             center = ManyUI.RichText(ManyUI.TextRun("middle")),
+                             right = ManyUI.RichText(ManyUI.TextRun("q:quit")))
+    html = ManyUIWeb.to_html(bar)
+
+    @test occursin("KaimonSlateDesktop", html)
+    @test occursin("middle", html)
+    @test occursin("q:quit", html)
+end
+
+@testitem "native: a widget's class is emitted once" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # `manyui-<type>` is pushed for every widget from `node.type_name`; pushing
+    # it again in a branch produced `class="manyui-datatable manyui-datatable"`.
+    rows = [(name = "a", n = 1)]
+    table = ManyUI.DataTable(rows, [ManyUI.Column("name"), ManyUI.Column("n")];
+                             key = r -> r.name,
+                             cell = (r, j) -> j == 1 ? r.name : string(r.n))
+    html = ManyUIWeb.to_html(table)
+
+    class_attr = match(r"class=\"([^\"]*)\"", html)
+    @test class_attr !== nothing
+    names = split(class_attr[1])
+    @test length(names) == length(unique(names))
+end

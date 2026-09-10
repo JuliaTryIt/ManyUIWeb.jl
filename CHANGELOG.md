@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A `StatusBar` reached the browser as an empty node.** The same shape as the
+  tab strip below: its content lives in `left`, `center` and `right`, not in
+  children, so the generic container branch had nothing to walk. The three slots
+  are now emitted as cells and laid out with `space-between`, which is what the
+  terminal backend achieves by padding.
+
+  Found by rebuilding the KaimonSlateDesktop status panel
+  (`ManyUIDemos/demos/slate_status.jl`), whose footer simply vanished.
+
+  Worth naming as a class of defect rather than two incidents: **a widget whose
+  content lives in fields rather than in children is invisible to the WebNative
+  backend** unless it has its own branch.
+
+- **A widget's class was emitted twice.** `manyui-<type>` is pushed for every
+  widget from `node.type_name`, and the `DataTable` branch pushed
+  `manyui-datatable` again, producing
+  `class="manyui-datatable manyui-datatable"`.
+
 - **A `TabStrip` reached the browser as an empty box.** Its captions live in
   `titles`, not as children, so the generic container branch of `to_html` had
   nothing to walk and emitted a blank rounded rectangle. The monitor demo — the
