@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`fragment_html(w; id)`** — one widget as an embeddable fragment: its markup
+  plus the rules it needs, nested under the fragment's own id so it cannot
+  restyle the page around it. `generate_document` produces a whole page, which a
+  host that already owns its document cannot use — a notebook cell, a dashboard
+  panel, a docs site — and `to_html` gave markup with no styles.
+
+  The webfont is deliberately left out of a fragment: the host owns its
+  typography, and fetching a remote font would fail on an offline install.
+
+  The stylesheet is now `NATIVE_CSS`, a constant rather than a heredoc inside
+  `generate_document`, which is what makes it available to a fragment at all.
+  `to_html`, `fragment_html` and `generate_document` are exported.
+
+
 ### Fixed
 
 - **Five more widgets rendered their content as an empty element** — the same

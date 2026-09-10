@@ -50,6 +50,8 @@ export SessionState
 # ManyUI frontend
 export WebServer, ServerConfig, WebSocketDriver, Session, ManyUIFrontend, serve
 export WebBackend
+# WebNative rendering
+export to_html, fragment_html, generate_document
 export backend_available, backend_kind, backend_capabilities
 # Tachikoma frontend (provided by the extension when Tachikoma is loaded)
 export serve_tachikoma

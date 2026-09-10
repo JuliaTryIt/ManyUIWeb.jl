@@ -454,3 +454,33 @@ end
         end
     end
 end
+
+@testitem "native: a widget can be embedded in a host page as a fragment" begin
+    import ManyUI, ManyUIWeb
+
+    # `generate_document` produces a whole page. A host that already owns its
+    # document -- a notebook cell, a dashboard, a docs site -- had no supported
+    # way to place one widget: `to_html` gave markup with no styles, and the
+    # rules lived inside the document function.
+    frag = ManyUIWeb.fragment_html(ManyUI.Label("hello"); id = "panel1")
+
+    @test occursin("hello", frag)
+    @test occursin("<style>", frag)
+    @test occursin("manyui-label", frag)
+    # No document furniture: a fragment goes INSIDE someone else's page.
+    @test !occursin("<!DOCTYPE", frag)
+    @test !occursin("<html", frag)
+end
+
+@testitem "native: an embedded fragment cannot restyle its host" begin
+    import ManyUI, ManyUIWeb
+
+    # Rules are nested under the fragment's own id, so a host page keeps its
+    # own look. Unscoped, `body { … }` alone would repaint the whole page.
+    frag = ManyUIWeb.fragment_html(ManyUI.Label("hi"); id = "panel2")
+    @test occursin("#panel2", frag)
+
+    # And it must not fetch a remote font: the host owns its typography, and a
+    # fetch would fail on an offline install.
+    @test !occursin("fonts.googleapis", frag)
+end

@@ -72,309 +72,21 @@ wrap is rarely what breaks a line, and the CSS then reflows.
 const MARKDOWN_WEB_WIDTH = 120
 
 """
-Convert a ManyUI Widget tree into an HTML string.
+The webfont the full-page document pulls in.
+
+Kept apart from `NATIVE_CSS` because an embedded fragment must NOT fetch it: a
+host page has its own typography, and a remote font would also break on the
+offline installs some hosts serve.
 """
-function to_html(w::ManyUI.Widget)
-    node = ManyUI.node(w)
-    id_str = " id=\"$(node.id)\""
-
-    # Classes
-    classes = [String(c) for c in node.classes]
-    push!(classes, "manyui-" * lowercase(String(node.type_name)))
-    if _is_disabled(w)
-        push!(classes, "manyui-disabled")
-    end
-    class_str = " class=\"$(join(classes, " "))\""
-
-    # Translate ManyUI BoxStyle to CSS Flexbox rules
-    css_props = String[]
-    box = node.box
-
-    if box.display == ManyUI.Display.NONE
-        push!(css_props, "display: none")
-    elseif box.display == ManyUI.Display.FLEX || w isa ManyUI.LayoutBox || w isa ManyUI.WidgetNode
-        push!(css_props, "display: flex")
-
-        dir_str = box.direction == ManyUI.Direction.ROW ? "row" :
-                  box.direction == ManyUI.Direction.COLUMN ? "column" :
-                  box.direction == ManyUI.Direction.ROW_REVERSE ? "row-reverse" : "column-reverse"
-        push!(css_props, "flex-direction: $dir_str")
-
-        just_str = box.justify == ManyUI.Justify.START ? "flex-start" :
-                   box.justify == ManyUI.Justify.CENTER ? "center" :
-                   box.justify == ManyUI.Justify.END ? "flex-end" :
-                   box.justify == ManyUI.Justify.SPACE_BETWEEN ? "space-between" :
-                   box.justify == ManyUI.Justify.SPACE_AROUND ? "space-around" : "space-evenly"
-        push!(css_props, "justify-content: $just_str")
-
-        align_str = box.align == ManyUI.Align.START ? "flex-start" :
-                    box.align == ManyUI.Align.CENTER ? "center" :
-                    box.align == ManyUI.Align.END ? "flex-end" : "stretch"
-        push!(css_props, "align-items: $align_str")
-
-        if box.gap > 0
-            push!(css_props, "gap: $(box.gap * 0.5)rem")
-        end
-    end
-
-    if box.grow > 0
-        push!(css_props, "flex-grow: $(box.grow)")
-    end
-
-    if box.width.kind == ManyUI.Dimension.PERCENT
-        push!(css_props, "width: $(box.width.value)%")
-    elseif box.width.kind == ManyUI.Dimension.CELLS
-        push!(css_props, "width: $(box.width.value)ch")
-    end
-
-    if box.height.kind == ManyUI.Dimension.PERCENT
-        push!(css_props, "height: $(box.height.value)%")
-    elseif box.height.kind == ManyUI.Dimension.CELLS
-        push!(css_props, "height: $(box.height.value * 1.5)em")
-    end
-
-    # Border
-    if box.border.kind != ManyUI.BorderKind.NONE && box.border.kind != ManyUI.BorderKind.BLANK
-        border_style = box.border.kind == ManyUI.BorderKind.DASHED ? "dashed" : "solid"
-        border_width = box.border.kind == ManyUI.BorderKind.THICK ? "2px" : "1px"
-        push!(css_props, "border: $border_width $border_style rgba(255, 255, 255, 0.2)")
-        push!(css_props, "border-radius: 8px")
-        # Ensure padding inside borders
-        push!(css_props, "padding: 1rem")
-    end
-
-    style_str = isempty(css_props) ? "" : " style=\"$(join(css_props, "; "))\""
-
-    tag = "div"
-    inner = ""
-
-    if w isa ManyUI.Label
-        tag = "span"
-        inner = _rich_html(w.text[])
-    elseif w isa ManyUI.Button
-        tag = "button"
-        disabled_str = _is_disabled(w) ? " disabled" : ""
-        id_str = " id=\"$(node.id)\" onclick=\"dispatch_event('$(node.id)', 'click')\"$disabled_str"
-        inner = w.label[]
-    elseif w isa ManyUI.TextInput
-        tag = "input"
-        type_str = (hasproperty(w, :is_password) && w.is_password) ? "password" : "text"
-        disabled_str = _is_disabled(w) ? " disabled" : ""
-        id_str = """ id="$(node.id)" type="$type_str" placeholder="$(w.placeholder)" value="$(w.text[])" oninput="dispatch_event('$(node.id)', 'input', this.value)" onkeydown="if (event.key === 'Enter') dispatch_event('$(node.id)', 'submit', this.value)"$disabled_str"""
-        inner = ""
-    elseif w isa ManyUI.ProgressBar
-        tag = "div"
-        val_pct = round(w.progress[] * 100, digits=1)
-        inner = """<div class="manyui-progressbar-fill" style="width: $val_pct%"></div>"""
-    elseif w isa ManyUI.Checkbox
-        tag = "label"
-        # Style as a custom checkbox wrapper
-        push!(classes, "manyui-checkbox-wrapper")
-        class_str = " class=\"$(join(classes, " "))\""
-        checked_str = ManyUI.is_checked(w) ? "checked" : ""
-        disabled_str = _is_disabled(w) ? "disabled" : ""
-        inner = """
-            <input type="checkbox" $checked_str $disabled_str onchange="dispatch_event('$(node.id)', 'change', this.checked)">
-            <span class="manyui-checkbox-custom"></span>
-            <span class="manyui-checkbox-label">$(w.label[])</span>
-        """
-    elseif w isa ManyUI.Scrollpane
-        # Ensure scrollpane has overflow
-        push!(css_props, "overflow: auto")
-        style_str = isempty(css_props) ? "" : " style=\"$(join(css_props, "; "))\""
-        for child in node.children
-            inner *= to_html(child)
-        end
-    elseif w isa ManyUI.TextArea
-        tag = "textarea"
-        disabled_str = _is_disabled(w) ? "disabled" : ""
-        id_str = """ id="$(node.id)" oninput="dispatch_event('$(node.id)', 'input', this.value)" $disabled_str"""
-        inner = join(w.lines, "\n")
-    elseif w isa ManyUI.List
-        tag = "div"
-        push!(classes, "manyui-list")
-        class_str = " class=\"$(join(classes, " "))\""
-        items_html = []
-        for (i, item) in enumerate(w.items)
-            sel_class = i == w.sel.cursor ? " manyui-list-selected" : ""
-            push!(items_html, """<div class="manyui-list-item$sel_class" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(_rich_html(w.format(item)))</div>""")
-        end
-        inner = join(items_html, "\n")
-    elseif w isa ManyUI.DataTable || w isa ManyUI.Table
-        tag = "table"
-        class_str = " class=\"$(join(classes, " "))\""
-
-        # Header
-        headers = []
-        for col in w.grid.cols
-            push!(headers, "<th>$(col.header)</th>")
-        end
-        inner *= "<thead><tr>" * join(headers, "") * "</tr></thead>"
-
-        # Body
-        inner *= "<tbody>"
-        if w isa ManyUI.DataTable
-            for k in 1:length(w.order)
-                source_i = w.order[k]
-                row = w.rows[source_i]
-                sel_class = source_i == w.sel.cursor ? " class=\"manyui-table-selected\"" : ""
-                inner *= "<tr$sel_class onclick=\"dispatch_event('$(node.id)', 'change', $k)\" ondblclick=\"dispatch_event('$(node.id)', 'submit', $k)\">"
-                for j in 1:length(w.grid.cols)
-                    val = _rich_html(w.cell(row, j))
-                    inner *= "<td>$val</td>"
-                end
-                inner *= "</tr>"
-            end
-        else
-            for (source_i, row) in enumerate(w.rows)
-                sel_class = source_i == w.sel.cursor ? " class=\"manyui-table-selected\"" : ""
-                inner *= "<tr$sel_class onclick=\"dispatch_event('$(node.id)', 'change', $source_i)\" ondblclick=\"dispatch_event('$(node.id)', 'submit', $source_i)\">"
-                for j in 1:length(w.grid.cols)
-                    val = _rich_html(w.cell(row, j))
-                    inner *= "<td>$val</td>"
-                end
-                inner *= "</tr>"
-            end
-        end
-        inner *= "</tbody>"
-    elseif w isa ManyUI.DropDown
-        tag = "select"
-        push!(classes, "manyui-dropdown")
-        class_str = " class=\"$(join(classes, " "))\""
-        disabled_str = _is_disabled(w) ? " disabled" : ""
-        id_str = """ id="$(node.id)" onchange="dispatch_event('$(node.id)', 'change', this.value)"$disabled_str"""
-        options = []
-        if w.selected[] == 0
-            push!(options, "<option value=\"0\" selected disabled hidden>$(w.placeholder)</option>")
-        end
-        lst = w.panel.list
-        for (i, item) in enumerate(lst.items)
-            sel = i == w.selected[] ? " selected" : ""
-            push!(options, "<option value=\"$i\"$sel>$(_rich_html(lst.format(item)))</option>")
-        end
-        inner = join(options, "\n")
-    elseif w isa ManyUI.RadioGroup
-        tag = "div"
-        push!(classes, "manyui-radiogroup")
-        class_str = " class=\"$(join(classes, " "))\""
-        options = String[]
-        disabled_options = w.disabled[]
-        for (i, option) in enumerate(w.options)
-            checked = i == w.selected[] ? " checked" : ""
-            disabled = i in disabled_options ? " disabled" : ""
-            push!(options, """<label><input type="radio" name="$(node.id)" value="$i"$checked$disabled onchange="dispatch_event('$(node.id)', 'change', $i)"><span>$option</span></label>""")
-        end
-        inner = join(options, "\n")
-    elseif w isa ManyUI.TreeView
-        tag = "div"
-        push!(classes, "manyui-treeview")
-        class_str = " class=\"$(join(classes, " "))\""
-        rows_html = []
-        rows = ManyUI._tv_flat!(w)
-        for (i, row) in enumerate(rows)
-            sel_class = i == w.sel.cursor ? " manyui-tree-selected" : ""
-            pad = row.depth * 20
-            has_children = !ManyUI.is_leaf(row.node)
-            twisty = has_children ? (ManyUI.is_expanded(row.node) ? "▼ " : "▶ ") : "  "
-            html = """<div class="manyui-tree-row$sel_class" style="padding-left: $(pad)px;">"""
-            html *= """<span class="manyui-tree-twisty" onclick="dispatch_event('$(node.id)', 'toggle', $i); event.stopPropagation();">$twisty</span>"""
-            html *= """<span class="manyui-tree-label" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(_rich_html(w.format(row.node.value)))</span>"""
-            html *= "</div>"
-            push!(rows_html, html)
-        end
-        inner = join(rows_html, "\n")
-    elseif w isa ManyUI.Spinner
-        tag = "span"
-        push!(classes, "manyui-spinner")
-        class_str = " class=\"$(join(classes, " "))\" data-tick=\"$(w.tick[])\""
-        inner = w.frames[w.tick[]]
-    elseif w isa ManyUI.Slider
-        tag = "input"
-        push!(classes, "manyui-slider")
-        class_str = " class=\"$(join(classes, " "))\""
-        disabled_str = _is_disabled(w) ? " disabled" : ""
-        id_str = """ id="$(node.id)" type="range" min="$(w.min)" max="$(w.max)" step="$(w.step)" value="$(w.value[])" oninput="dispatch_event('$(node.id)', 'change', parseFloat(this.value))"$disabled_str"""
-    elseif w isa ManyUI.Static
-        # Carries a `RichText` in `text`, exactly as `Label` does.
-        inner = _rich_html(w.text[])
-    elseif w isa ManyUI.Sparkline
-        # ManyUI owns the scale and the glyph choice; this only places them, so
-        # the browser and the terminal cannot drift apart.
-        lo, hi = ManyUI.spark_bounds(w)
-        glyphs = [ManyUI.SPARK_GLYPHS[ManyUI.spark_level(v, lo, hi)] for v in w.values]
-        inner = "<span class=\"manyui-spark\">$(join(glyphs))</span>"
-    elseif w isa ManyUI.ProgressList
-        rows = String[]
-        for item in w.items
-            pct = round(Int, clamp(item.progress, 0, 1) * 100)
-            push!(rows, """<div class="manyui-progressitem"><div class="manyui-progressitem-label">$(_rich_html(item.label))</div><div class="manyui-progressbar"><div class="manyui-progressbar-fill" style="width: $(pct)%"></div></div></div>""")
-        end
-        inner = join(rows)
-    elseif w isa ManyUI.MarkdownPane
-        # `md_lines` is where the Markdown AST becomes styled lines. Reusing it
-        # keeps one projection: a heading is bold here because it is bold there.
-        lines = ManyUI.md_lines(w, MARKDOWN_WEB_WIDTH)
-        inner = join(("<div class=\"manyui-md-line\">$(_rich_html(l))</div>"
-                      for l in lines))
-    elseif w isa ManyUI.StatusBar
-        # Three slots held in FIELDS, not children -- the same shape that made a
-        # `TabStrip` render as an empty box. Emitted as three cells so the
-        # browser's own `space-between` does what the terminal does by padding.
-        slots = String[]
-        for (slot, place) in ((w.left[], "left"), (w.center[], "center"),
-                              (w.right[], "right"))
-            push!(slots, """<div class="manyui-statusbar-$place">$(_rich_html(slot))</div>""")
-        end
-        inner = join(slots)
-    elseif w isa ManyUI.TabStrip
-        # A strip's captions live in `titles`, NOT as children, so the generic
-        # branch below emitted an empty box: three blank rectangles where
-        # `1 Server | 2 Sessions | 3 Activity` belongs. The runs are kept as
-        # runs -- Kaimon colours the shortcut digit inside the caption, which is
-        # the whole reason `titles` are `RichText` (roadmap 10.1).
-        selected = w.selected[]
-        captions = String[]
-        for (i, title) in enumerate(w.titles)
-            chosen = i == selected ? " manyui-tab-selected" : ""
-            push!(captions,
-                """<div class="manyui-tab$chosen" onclick="dispatch_event('$(node.id)', 'change', $i)">$(_rich_html(title))</div>""")
-        end
-        inner = join(captions)
-    else
-        # Generic container. A border caption is chrome, not a child, so
-        # it is emitted here rather than mounted -- exactly as the TUI
-        # paints it on the border rather than in the content box.
-        cap = ManyUI.border_title(w)
-        isempty(cap) ||
-            (inner *= "<div class=\"manyui-panel-title\">$(_rich_html(cap))</div>")
-        # `content_children`, not `node.children`: a wrapper may hold the widget
-        # it guards in a FIELD, and walking the mounted children alone renders it
-        # as an empty box. `ErrorBoundary` is the case that proved it.
-        for child in ManyUI.content_children(w)
-            inner *= to_html(child)
-        end
-    end
-
-    is_disabled = _is_disabled(w)
-    focus_attrs = node.focusable && !is_disabled ?
-        " tabindex=\"0\" onfocus=\"dispatch_event('$(node.id)', 'focus')\" onblur=\"dispatch_event('$(node.id)', 'blur')\"" : ""
-    return "<$tag$id_str$class_str$style_str$focus_attrs>$inner</$tag>"
-end
+const NATIVE_FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');"
 
 """
-Generate the full HTML document for a root widget.
+Every rule the WebNative backend's own markup needs.
+
+A constant rather than a heredoc inside `generate_document`, so a caller
+embedding a single widget can have the rules without the page.
 """
-function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative")
-    return """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>$title</title>
-        <script src="https://unpkg.com/morphdom@2.7.4/dist/morphdom-umd.min.js"></script>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+const NATIVE_CSS = raw"""
 
             body {
                 font-family: 'Outfit', sans-serif;
@@ -747,6 +459,335 @@ function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative"
                 color: #ffffff;
                 font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             }
+"""
+
+"""
+Convert a ManyUI Widget tree into an HTML string.
+"""
+function to_html(w::ManyUI.Widget)
+    node = ManyUI.node(w)
+    id_str = " id=\"$(node.id)\""
+
+    # Classes
+    classes = [String(c) for c in node.classes]
+    push!(classes, "manyui-" * lowercase(String(node.type_name)))
+    if _is_disabled(w)
+        push!(classes, "manyui-disabled")
+    end
+    class_str = " class=\"$(join(classes, " "))\""
+
+    # Translate ManyUI BoxStyle to CSS Flexbox rules
+    css_props = String[]
+    box = node.box
+
+    if box.display == ManyUI.Display.NONE
+        push!(css_props, "display: none")
+    elseif box.display == ManyUI.Display.FLEX || w isa ManyUI.LayoutBox || w isa ManyUI.WidgetNode
+        push!(css_props, "display: flex")
+
+        dir_str = box.direction == ManyUI.Direction.ROW ? "row" :
+                  box.direction == ManyUI.Direction.COLUMN ? "column" :
+                  box.direction == ManyUI.Direction.ROW_REVERSE ? "row-reverse" : "column-reverse"
+        push!(css_props, "flex-direction: $dir_str")
+
+        just_str = box.justify == ManyUI.Justify.START ? "flex-start" :
+                   box.justify == ManyUI.Justify.CENTER ? "center" :
+                   box.justify == ManyUI.Justify.END ? "flex-end" :
+                   box.justify == ManyUI.Justify.SPACE_BETWEEN ? "space-between" :
+                   box.justify == ManyUI.Justify.SPACE_AROUND ? "space-around" : "space-evenly"
+        push!(css_props, "justify-content: $just_str")
+
+        align_str = box.align == ManyUI.Align.START ? "flex-start" :
+                    box.align == ManyUI.Align.CENTER ? "center" :
+                    box.align == ManyUI.Align.END ? "flex-end" : "stretch"
+        push!(css_props, "align-items: $align_str")
+
+        if box.gap > 0
+            push!(css_props, "gap: $(box.gap * 0.5)rem")
+        end
+    end
+
+    if box.grow > 0
+        push!(css_props, "flex-grow: $(box.grow)")
+    end
+
+    if box.width.kind == ManyUI.Dimension.PERCENT
+        push!(css_props, "width: $(box.width.value)%")
+    elseif box.width.kind == ManyUI.Dimension.CELLS
+        push!(css_props, "width: $(box.width.value)ch")
+    end
+
+    if box.height.kind == ManyUI.Dimension.PERCENT
+        push!(css_props, "height: $(box.height.value)%")
+    elseif box.height.kind == ManyUI.Dimension.CELLS
+        push!(css_props, "height: $(box.height.value * 1.5)em")
+    end
+
+    # Border
+    if box.border.kind != ManyUI.BorderKind.NONE && box.border.kind != ManyUI.BorderKind.BLANK
+        border_style = box.border.kind == ManyUI.BorderKind.DASHED ? "dashed" : "solid"
+        border_width = box.border.kind == ManyUI.BorderKind.THICK ? "2px" : "1px"
+        push!(css_props, "border: $border_width $border_style rgba(255, 255, 255, 0.2)")
+        push!(css_props, "border-radius: 8px")
+        # Ensure padding inside borders
+        push!(css_props, "padding: 1rem")
+    end
+
+    style_str = isempty(css_props) ? "" : " style=\"$(join(css_props, "; "))\""
+
+    tag = "div"
+    inner = ""
+
+    if w isa ManyUI.Label
+        tag = "span"
+        inner = _rich_html(w.text[])
+    elseif w isa ManyUI.Button
+        tag = "button"
+        disabled_str = _is_disabled(w) ? " disabled" : ""
+        id_str = " id=\"$(node.id)\" onclick=\"dispatch_event('$(node.id)', 'click')\"$disabled_str"
+        inner = w.label[]
+    elseif w isa ManyUI.TextInput
+        tag = "input"
+        type_str = (hasproperty(w, :is_password) && w.is_password) ? "password" : "text"
+        disabled_str = _is_disabled(w) ? " disabled" : ""
+        id_str = """ id="$(node.id)" type="$type_str" placeholder="$(w.placeholder)" value="$(w.text[])" oninput="dispatch_event('$(node.id)', 'input', this.value)" onkeydown="if (event.key === 'Enter') dispatch_event('$(node.id)', 'submit', this.value)"$disabled_str"""
+        inner = ""
+    elseif w isa ManyUI.ProgressBar
+        tag = "div"
+        val_pct = round(w.progress[] * 100, digits=1)
+        inner = """<div class="manyui-progressbar-fill" style="width: $val_pct%"></div>"""
+    elseif w isa ManyUI.Checkbox
+        tag = "label"
+        # Style as a custom checkbox wrapper
+        push!(classes, "manyui-checkbox-wrapper")
+        class_str = " class=\"$(join(classes, " "))\""
+        checked_str = ManyUI.is_checked(w) ? "checked" : ""
+        disabled_str = _is_disabled(w) ? "disabled" : ""
+        inner = """
+            <input type="checkbox" $checked_str $disabled_str onchange="dispatch_event('$(node.id)', 'change', this.checked)">
+            <span class="manyui-checkbox-custom"></span>
+            <span class="manyui-checkbox-label">$(w.label[])</span>
+        """
+    elseif w isa ManyUI.Scrollpane
+        # Ensure scrollpane has overflow
+        push!(css_props, "overflow: auto")
+        style_str = isempty(css_props) ? "" : " style=\"$(join(css_props, "; "))\""
+        for child in node.children
+            inner *= to_html(child)
+        end
+    elseif w isa ManyUI.TextArea
+        tag = "textarea"
+        disabled_str = _is_disabled(w) ? "disabled" : ""
+        id_str = """ id="$(node.id)" oninput="dispatch_event('$(node.id)', 'input', this.value)" $disabled_str"""
+        inner = join(w.lines, "\n")
+    elseif w isa ManyUI.List
+        tag = "div"
+        push!(classes, "manyui-list")
+        class_str = " class=\"$(join(classes, " "))\""
+        items_html = []
+        for (i, item) in enumerate(w.items)
+            sel_class = i == w.sel.cursor ? " manyui-list-selected" : ""
+            push!(items_html, """<div class="manyui-list-item$sel_class" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(_rich_html(w.format(item)))</div>""")
+        end
+        inner = join(items_html, "\n")
+    elseif w isa ManyUI.DataTable || w isa ManyUI.Table
+        tag = "table"
+        class_str = " class=\"$(join(classes, " "))\""
+
+        # Header
+        headers = []
+        for col in w.grid.cols
+            push!(headers, "<th>$(col.header)</th>")
+        end
+        inner *= "<thead><tr>" * join(headers, "") * "</tr></thead>"
+
+        # Body
+        inner *= "<tbody>"
+        if w isa ManyUI.DataTable
+            for k in 1:length(w.order)
+                source_i = w.order[k]
+                row = w.rows[source_i]
+                sel_class = source_i == w.sel.cursor ? " class=\"manyui-table-selected\"" : ""
+                inner *= "<tr$sel_class onclick=\"dispatch_event('$(node.id)', 'change', $k)\" ondblclick=\"dispatch_event('$(node.id)', 'submit', $k)\">"
+                for j in 1:length(w.grid.cols)
+                    val = _rich_html(w.cell(row, j))
+                    inner *= "<td>$val</td>"
+                end
+                inner *= "</tr>"
+            end
+        else
+            for (source_i, row) in enumerate(w.rows)
+                sel_class = source_i == w.sel.cursor ? " class=\"manyui-table-selected\"" : ""
+                inner *= "<tr$sel_class onclick=\"dispatch_event('$(node.id)', 'change', $source_i)\" ondblclick=\"dispatch_event('$(node.id)', 'submit', $source_i)\">"
+                for j in 1:length(w.grid.cols)
+                    val = _rich_html(w.cell(row, j))
+                    inner *= "<td>$val</td>"
+                end
+                inner *= "</tr>"
+            end
+        end
+        inner *= "</tbody>"
+    elseif w isa ManyUI.DropDown
+        tag = "select"
+        push!(classes, "manyui-dropdown")
+        class_str = " class=\"$(join(classes, " "))\""
+        disabled_str = _is_disabled(w) ? " disabled" : ""
+        id_str = """ id="$(node.id)" onchange="dispatch_event('$(node.id)', 'change', this.value)"$disabled_str"""
+        options = []
+        if w.selected[] == 0
+            push!(options, "<option value=\"0\" selected disabled hidden>$(w.placeholder)</option>")
+        end
+        lst = w.panel.list
+        for (i, item) in enumerate(lst.items)
+            sel = i == w.selected[] ? " selected" : ""
+            push!(options, "<option value=\"$i\"$sel>$(_rich_html(lst.format(item)))</option>")
+        end
+        inner = join(options, "\n")
+    elseif w isa ManyUI.RadioGroup
+        tag = "div"
+        push!(classes, "manyui-radiogroup")
+        class_str = " class=\"$(join(classes, " "))\""
+        options = String[]
+        disabled_options = w.disabled[]
+        for (i, option) in enumerate(w.options)
+            checked = i == w.selected[] ? " checked" : ""
+            disabled = i in disabled_options ? " disabled" : ""
+            push!(options, """<label><input type="radio" name="$(node.id)" value="$i"$checked$disabled onchange="dispatch_event('$(node.id)', 'change', $i)"><span>$option</span></label>""")
+        end
+        inner = join(options, "\n")
+    elseif w isa ManyUI.TreeView
+        tag = "div"
+        push!(classes, "manyui-treeview")
+        class_str = " class=\"$(join(classes, " "))\""
+        rows_html = []
+        rows = ManyUI._tv_flat!(w)
+        for (i, row) in enumerate(rows)
+            sel_class = i == w.sel.cursor ? " manyui-tree-selected" : ""
+            pad = row.depth * 20
+            has_children = !ManyUI.is_leaf(row.node)
+            twisty = has_children ? (ManyUI.is_expanded(row.node) ? "▼ " : "▶ ") : "  "
+            html = """<div class="manyui-tree-row$sel_class" style="padding-left: $(pad)px;">"""
+            html *= """<span class="manyui-tree-twisty" onclick="dispatch_event('$(node.id)', 'toggle', $i); event.stopPropagation();">$twisty</span>"""
+            html *= """<span class="manyui-tree-label" onclick="dispatch_event('$(node.id)', 'change', $i)" ondblclick="dispatch_event('$(node.id)', 'submit', $i)">$(_rich_html(w.format(row.node.value)))</span>"""
+            html *= "</div>"
+            push!(rows_html, html)
+        end
+        inner = join(rows_html, "\n")
+    elseif w isa ManyUI.Spinner
+        tag = "span"
+        push!(classes, "manyui-spinner")
+        class_str = " class=\"$(join(classes, " "))\" data-tick=\"$(w.tick[])\""
+        inner = w.frames[w.tick[]]
+    elseif w isa ManyUI.Slider
+        tag = "input"
+        push!(classes, "manyui-slider")
+        class_str = " class=\"$(join(classes, " "))\""
+        disabled_str = _is_disabled(w) ? " disabled" : ""
+        id_str = """ id="$(node.id)" type="range" min="$(w.min)" max="$(w.max)" step="$(w.step)" value="$(w.value[])" oninput="dispatch_event('$(node.id)', 'change', parseFloat(this.value))"$disabled_str"""
+    elseif w isa ManyUI.Static
+        # Carries a `RichText` in `text`, exactly as `Label` does.
+        inner = _rich_html(w.text[])
+    elseif w isa ManyUI.Sparkline
+        # ManyUI owns the scale and the glyph choice; this only places them, so
+        # the browser and the terminal cannot drift apart.
+        lo, hi = ManyUI.spark_bounds(w)
+        glyphs = [ManyUI.SPARK_GLYPHS[ManyUI.spark_level(v, lo, hi)] for v in w.values]
+        inner = "<span class=\"manyui-spark\">$(join(glyphs))</span>"
+    elseif w isa ManyUI.ProgressList
+        rows = String[]
+        for item in w.items
+            pct = round(Int, clamp(item.progress, 0, 1) * 100)
+            push!(rows, """<div class="manyui-progressitem"><div class="manyui-progressitem-label">$(_rich_html(item.label))</div><div class="manyui-progressbar"><div class="manyui-progressbar-fill" style="width: $(pct)%"></div></div></div>""")
+        end
+        inner = join(rows)
+    elseif w isa ManyUI.MarkdownPane
+        # `md_lines` is where the Markdown AST becomes styled lines. Reusing it
+        # keeps one projection: a heading is bold here because it is bold there.
+        lines = ManyUI.md_lines(w, MARKDOWN_WEB_WIDTH)
+        inner = join(("<div class=\"manyui-md-line\">$(_rich_html(l))</div>"
+                      for l in lines))
+    elseif w isa ManyUI.StatusBar
+        # Three slots held in FIELDS, not children -- the same shape that made a
+        # `TabStrip` render as an empty box. Emitted as three cells so the
+        # browser's own `space-between` does what the terminal does by padding.
+        slots = String[]
+        for (slot, place) in ((w.left[], "left"), (w.center[], "center"),
+                              (w.right[], "right"))
+            push!(slots, """<div class="manyui-statusbar-$place">$(_rich_html(slot))</div>""")
+        end
+        inner = join(slots)
+    elseif w isa ManyUI.TabStrip
+        # A strip's captions live in `titles`, NOT as children, so the generic
+        # branch below emitted an empty box: three blank rectangles where
+        # `1 Server | 2 Sessions | 3 Activity` belongs. The runs are kept as
+        # runs -- Kaimon colours the shortcut digit inside the caption, which is
+        # the whole reason `titles` are `RichText` (roadmap 10.1).
+        selected = w.selected[]
+        captions = String[]
+        for (i, title) in enumerate(w.titles)
+            chosen = i == selected ? " manyui-tab-selected" : ""
+            push!(captions,
+                """<div class="manyui-tab$chosen" onclick="dispatch_event('$(node.id)', 'change', $i)">$(_rich_html(title))</div>""")
+        end
+        inner = join(captions)
+    else
+        # Generic container. A border caption is chrome, not a child, so
+        # it is emitted here rather than mounted -- exactly as the TUI
+        # paints it on the border rather than in the content box.
+        cap = ManyUI.border_title(w)
+        isempty(cap) ||
+            (inner *= "<div class=\"manyui-panel-title\">$(_rich_html(cap))</div>")
+        # `content_children`, not `node.children`: a wrapper may hold the widget
+        # it guards in a FIELD, and walking the mounted children alone renders it
+        # as an empty box. `ErrorBoundary` is the case that proved it.
+        for child in ManyUI.content_children(w)
+            inner *= to_html(child)
+        end
+    end
+
+    is_disabled = _is_disabled(w)
+    focus_attrs = node.focusable && !is_disabled ?
+        " tabindex=\"0\" onfocus=\"dispatch_event('$(node.id)', 'focus')\" onblur=\"dispatch_event('$(node.id)', 'blur')\"" : ""
+    return "<$tag$id_str$class_str$style_str$focus_attrs>$inner</$tag>"
+end
+
+"""
+    fragment_html(w; id) -> String
+
+One widget as an **embeddable fragment**: its markup plus the rules it needs,
+scoped so it cannot restyle the page around it.
+
+`generate_document` produces a whole page, which a host that already owns its
+document cannot use — a notebook cell, a dashboard panel, a docs site. Those need
+the markup *and* the styles, and neither `to_html` nor the document function
+offered that on its own.
+
+The rules are emitted nested under `#id`, so `body { … }` and every `.manyui-*`
+rule apply inside the fragment and nowhere else. The webfont is deliberately left
+out: the host owns its typography, and fetching one would fail on an offline
+install.
+"""
+function fragment_html(w::ManyUI.Widget; id::AbstractString = "manyui-fragment")
+    return string("<style>#", id, " {\n", NATIVE_CSS, "\n}</style>",
+                  "<div id=\"", id, "\" class=\"manyui-fragment\">",
+                  to_html(w), "</div>")
+end
+
+"""
+Generate the full HTML document for a root widget.
+"""
+function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative")
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>$title</title>
+        <script src="https://unpkg.com/morphdom@2.7.4/dist/morphdom-umd.min.js"></script>
+        <style>
+            $(NATIVE_FONT_IMPORT)
+            $(NATIVE_CSS)
         </style>
         <script>
             // Client state
