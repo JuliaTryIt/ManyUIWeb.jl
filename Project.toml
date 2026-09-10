@@ -12,6 +12,10 @@ JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 
+[sources]
+ManyUI = {url = "https://github.com/juliatryit/ManyUI.jl.git"}
+ManyUITUI = {url = "https://github.com/juliatryit/ManyUITUI.jl.git"}
+
 [weakdeps]
 Tachikoma = "468859d6-42d8-48b7-8ad9-1d312e0e3b0a"
 

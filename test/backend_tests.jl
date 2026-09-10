@@ -144,3 +144,24 @@ end
         close(server)
     end
 end
+
+@testitem "packaging: every unregistered dependency declares where it comes from" begin
+    import TOML
+    import ManyUIWeb
+
+    # None of the ManyUI stack is registered, so a consumer depending on
+    # ManyUIWeb alone cannot resolve it — Pkg has nowhere to look. Declaring the
+    # sources HERE fixes that for every consumer at once: `[sources]` is honoured
+    # for a dependency, not only for the root project, so nobody downstream has
+    # to redeclare `ManyUITUI` just to give it a URL.
+    project = TOML.parsefile(joinpath(pkgdir(ManyUIWeb), "Project.toml"))
+    deps = keys(get(project, "deps", Dict{String,Any}()))
+    sources = get(project, "sources", Dict{String,Any}())
+
+    unregistered = filter(name -> startswith(name, "ManyUI"), collect(deps))
+    @test !isempty(unregistered)
+    for name in unregistered
+        @test haskey(sources, name)
+        @test haskey(sources[name], "url") || haskey(sources[name], "path")
+    end
+end

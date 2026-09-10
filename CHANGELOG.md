@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **ManyUIWeb could not be resolved by anyone who depended on it.** None of the
+  ManyUI stack is registered, and this package declared no `[sources]`, so a
+  consumer had to redeclare `ManyUITUI` as a direct dependency of its own just to
+  give it a URL — for a package it never uses.
+
+  `[sources]` is honoured for a **dependency**, not only for the root project, so
+  declaring them here fixes it for every consumer at once. Verified rather than
+  assumed: a project depending on ManyUIWeb alone now resolves and loads the
+  whole stack.
+
+  A test walks this package's `ManyUI*` dependencies and requires each to declare
+  where it comes from, so a new unregistered dependency cannot reintroduce it.
+
+
 ### Added
 
 - **`fragment_html(w; id)`** — one widget as an embeddable fragment: its markup
