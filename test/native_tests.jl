@@ -280,3 +280,66 @@ end
         Base.close(server)
     end
 end
+
+@testitem "native: a tab strip projects its captions" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # A `TabStrip` holds its captions in `titles`, not as children, so the
+    # generic container branch emitted an empty box: the monitor screen showed
+    # three blank rounded rectangles where `1 Server | 2 Sessions | 3 Activity`
+    # belongs. Found by rendering a real screen, not by a unit test.
+    tabs = ManyUI.Tabs("1 Server" => ManyUI.Label("a"),
+                       "2 Sessions" => ManyUI.Label("b"),
+                       "3 Activity" => ManyUI.Label("c"))
+    html = ManyUIWeb.to_html(tabs.strip)
+
+    @test occursin("1 Server", html)
+    @test occursin("2 Sessions", html)
+    @test occursin("3 Activity", html)
+end
+
+@testitem "native: the selected tab is distinguishable, and the others are clickable" begin
+    import ManyUI
+    import ManyUIWeb
+
+    tabs = ManyUI.Tabs("One" => ManyUI.Label("a"), "Two" => ManyUI.Label("b"))
+    html = ManyUIWeb.to_html(tabs.strip)
+
+    # Selection has to reach the DOM, or a browser cannot show which tab is open.
+    @test occursin("manyui-tab-selected", html)
+    # And a tab is a control: clicking it selects, as it does in the terminal.
+    @test occursin("dispatch_event", html)
+end
+
+@testitem "native: a tab caption keeps the styling of its runs" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # Kaimon colours the shortcut digit inside the caption — "**1** Server" with
+    # the digit in yellow. That is the whole reason `TabStrip.titles` are
+    # `RichText`, so flattening them here would undo §10.1 of the roadmap.
+    caption = ManyUI.RichText([ManyUI.TextRun("1", ManyUI.Style(fg = ManyUI.token(:warning))),
+                               ManyUI.TextRun(" Server", ManyUI.Style())])
+    tabs = ManyUI.Tabs(caption => ManyUI.Label("a"))
+    html = ManyUIWeb.to_html(tabs.strip)
+
+    @test occursin("Server", html)
+    @test occursin("<span", html)
+end
+
+@testitem "native: the document styles a tab strip as a row" begin
+    import ManyUI
+    import ManyUIWeb
+
+    # Emitting the captions is half of it. Without a rule the strip inherits the
+    # container's column layout and the tabs stack vertically, which is not a
+    # tab strip.
+    model = () -> ManyUI.Tabs("One" => ManyUI.Label("a"), "Two" => ManyUI.Label("b"))
+    root = ManyUI.render(model, ManyUI.WebNative())
+    doc = ManyUIWeb.generate_document(root)
+
+    @test occursin(".manyui-tabstrip", doc)
+    @test occursin("flex-direction: row", doc)
+    @test occursin(".manyui-tab-selected", doc)
+end

@@ -287,6 +287,20 @@ function to_html(w::ManyUI.Widget)
         class_str = " class=\"$(join(classes, " "))\""
         disabled_str = _is_disabled(w) ? " disabled" : ""
         id_str = """ id="$(node.id)" type="range" min="$(w.min)" max="$(w.max)" step="$(w.step)" value="$(w.value[])" oninput="dispatch_event('$(node.id)', 'change', parseFloat(this.value))"$disabled_str"""
+    elseif w isa ManyUI.TabStrip
+        # A strip's captions live in `titles`, NOT as children, so the generic
+        # branch below emitted an empty box: three blank rectangles where
+        # `1 Server | 2 Sessions | 3 Activity` belongs. The runs are kept as
+        # runs -- Kaimon colours the shortcut digit inside the caption, which is
+        # the whole reason `titles` are `RichText` (roadmap 10.1).
+        selected = w.selected[]
+        captions = String[]
+        for (i, title) in enumerate(w.titles)
+            chosen = i == selected ? " manyui-tab-selected" : ""
+            push!(captions,
+                """<div class="manyui-tab$chosen" onclick="dispatch_event('$(node.id)', 'change', $i)">$(_rich_html(title))</div>""")
+        end
+        inner = join(captions)
     else
         # Generic container. A border caption is chrome, not a child, so
         # it is emitted here rather than mounted -- exactly as the TUI
@@ -389,6 +403,36 @@ function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative"
             @keyframes popup {
                 0% { transform: scale(0.9); opacity: 0; }
                 100% { transform: scale(1); opacity: 1; }
+            }
+
+            /* A tab strip is a ROW of captions, and the chosen one has to
+               look chosen: the class alone told the DOM nothing. */
+            .manyui-tabstrip {
+                display: flex;
+                flex-direction: row;
+                gap: 0.5rem;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            .manyui-tab {
+                padding: 0.35rem 0.9rem;
+                border-radius: 10px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.04);
+                cursor: pointer;
+                white-space: nowrap;
+                transition: background 0.15s ease, border-color 0.15s ease;
+            }
+
+            .manyui-tab:hover {
+                background: rgba(255, 255, 255, 0.10);
+            }
+
+            .manyui-tab-selected {
+                background: rgba(255, 255, 255, 0.16);
+                border-color: rgba(255, 255, 255, 0.35);
+                font-weight: 600;
             }
 
             .manyui-label {

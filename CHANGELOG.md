@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `TabStrip` reached the browser as an empty box.** Its captions live in
+  `titles`, not as children, so the generic container branch of `to_html` had
+  nothing to walk and emitted a blank rounded rectangle. The monitor demo — the
+  rebuild of Kaimon's Server tab — showed three of them where
+  `1 Server | 2 Sessions | 3 Activity` belongs.
+
+  The strip now projects each caption as a clickable `.manyui-tab`, marks the
+  chosen one `.manyui-tab-selected`, and dispatches `change` on click, as the
+  terminal backend does. The captions stay `RichText`, so the shortcut digit
+  keeps its own colour inside the caption — which is the reason `titles` are
+  `RichText` at all (ROADMAP §10.1).
+
+  A stylesheet rule lays the strip out as a row and gives the chosen tab a
+  visible state; without it the tabs inherited the container's column direction
+  and stacked vertically.
+
+  Found by rendering a real screen rather than by a unit test, which is the
+  argument ROADMAP §10 makes for building screens.
+
+
 ### Changed (breaking)
 
 - ManyUIWeb now requires HTTP.jl 2 instead of retaining HTTP.jl 1 support.
