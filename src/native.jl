@@ -161,6 +161,12 @@ const NATIVE_CSS = raw"""
 
             /* A tab strip is a ROW of captions, and the chosen one has to
                look chosen: the class alone told the DOM nothing. */
+            /* `[hidden]` is `display: none` at the lowest specificity, and every
+               container below sets `display: flex`, which beats it. Without
+               `!important` a hidden panel stays on screen at full height — which
+               is exactly what tab switching relies on NOT happening. */
+            [hidden] { display: none !important; }
+
             .manyui-tabstrip {
                 display: flex;
                 flex-direction: row;

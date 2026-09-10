@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Found by clicking the tabs of a real admin panel and having nothing happen.
 
+  Hiding also had to be made to work at all: `[hidden]` is `display: none` at
+  the lowest specificity, and every container sets `display: flex`, which beats
+  it. A hidden panel stayed on screen at full height — 686 px, measured on an
+  element whose `hidden` was true.
+
 
 ### Fixed
 

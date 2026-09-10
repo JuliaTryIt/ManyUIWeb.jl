@@ -503,3 +503,19 @@ end
     @test occursin("manyui-fragment-tabs", frag)
     @test !occursin("dispatch_event(", split(frag, "<script")[end])
 end
+
+@testitem "native: hiding a widget actually hides it" begin
+    import ManyUI, ManyUIWeb
+
+    # `[hidden]` is `display: none` at the lowest specificity, and every ManyUI
+    # container carries an explicit `display: flex` — which beats it. So a hidden
+    # panel stayed on screen at full height: measured 686px on an element whose
+    # `hidden` was true. The rule has to win.
+    doc = ManyUIWeb.generate_document(ManyUI.Label("x"))
+    @test occursin("[hidden]", doc)
+    @test occursin("display: none !important", doc)
+
+    # And in a fragment too, which is where tab switching relies on it.
+    frag = ManyUIWeb.fragment_html(ManyUI.Label("x"); id = "f")
+    @test occursin("[hidden]", frag)
+end
