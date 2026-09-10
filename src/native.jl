@@ -64,6 +64,14 @@ function _rich_html(rt::ManyUI.RichText)::String
 end
 
 """
+The column width a `MarkdownPane` is wrapped to for the browser.
+
+A pane wraps to a terminal's columns; a browser has none. Wide enough that the
+wrap is rarely what breaks a line, and the CSS then reflows.
+"""
+const MARKDOWN_WEB_WIDTH = 120
+
+"""
 Convert a ManyUI Widget tree into an HTML string.
 """
 function to_html(w::ManyUI.Widget)
@@ -286,6 +294,28 @@ function to_html(w::ManyUI.Widget)
         class_str = " class=\"$(join(classes, " "))\""
         disabled_str = _is_disabled(w) ? " disabled" : ""
         id_str = """ id="$(node.id)" type="range" min="$(w.min)" max="$(w.max)" step="$(w.step)" value="$(w.value[])" oninput="dispatch_event('$(node.id)', 'change', parseFloat(this.value))"$disabled_str"""
+    elseif w isa ManyUI.Static
+        # Carries a `RichText` in `text`, exactly as `Label` does.
+        inner = _rich_html(w.text[])
+    elseif w isa ManyUI.Sparkline
+        # ManyUI owns the scale and the glyph choice; this only places them, so
+        # the browser and the terminal cannot drift apart.
+        lo, hi = ManyUI.spark_bounds(w)
+        glyphs = [ManyUI.SPARK_GLYPHS[ManyUI.spark_level(v, lo, hi)] for v in w.values]
+        inner = "<span class=\"manyui-spark\">$(join(glyphs))</span>"
+    elseif w isa ManyUI.ProgressList
+        rows = String[]
+        for item in w.items
+            pct = round(Int, clamp(item.progress, 0, 1) * 100)
+            push!(rows, """<div class="manyui-progressitem"><div class="manyui-progressitem-label">$(_rich_html(item.label))</div><div class="manyui-progressbar"><div class="manyui-progressbar-fill" style="width: $(pct)%"></div></div></div>""")
+        end
+        inner = join(rows)
+    elseif w isa ManyUI.MarkdownPane
+        # `md_lines` is where the Markdown AST becomes styled lines. Reusing it
+        # keeps one projection: a heading is bold here because it is bold there.
+        lines = ManyUI.md_lines(w, MARKDOWN_WEB_WIDTH)
+        inner = join(("<div class=\"manyui-md-line\">$(_rich_html(l))</div>"
+                      for l in lines))
     elseif w isa ManyUI.StatusBar
         # Three slots held in FIELDS, not children -- the same shape that made a
         # `TabStrip` render as an empty box. Emitted as three cells so the
@@ -317,7 +347,10 @@ function to_html(w::ManyUI.Widget)
         cap = ManyUI.border_title(w)
         isempty(cap) ||
             (inner *= "<div class=\"manyui-panel-title\">$(_rich_html(cap))</div>")
-        for child in node.children
+        # `content_children`, not `node.children`: a wrapper may hold the widget
+        # it guards in a FIELD, and walking the mounted children alone renders it
+        # as an empty box. `ErrorBoundary` is the case that proved it.
+        for child in ManyUI.content_children(w)
             inner *= to_html(child)
         end
     end
@@ -443,6 +476,27 @@ function generate_document(root::ManyUI.Widget, title::String="ManyUI WebNative"
                 border-color: rgba(255, 255, 255, 0.35);
                 font-weight: 600;
             }
+
+            .manyui-spark {
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                letter-spacing: -0.05em;
+            }
+
+            .manyui-md-line {
+                white-space: pre-wrap;
+                min-height: 1em;
+            }
+
+            .manyui-progressitem {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 0.75rem;
+                width: 100%;
+            }
+
+            .manyui-progressitem-label { flex: 0 0 auto; }
+            .manyui-progressitem .manyui-progressbar { flex: 1 1 auto; }
 
             .manyui-statusbar {
                 display: flex;

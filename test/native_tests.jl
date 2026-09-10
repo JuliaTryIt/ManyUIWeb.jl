@@ -379,3 +379,78 @@ end
     names = split(class_attr[1])
     @test length(names) == length(unique(names))
 end
+
+@testitem "native: every widget type either shows its content or is knowingly exempt" begin
+    import ManyUI, ManyUIWeb
+    using ManyUI
+    using InteractiveUtils
+
+    # The ratchet for one class of defect: `to_html` walks children, so a widget
+    # holding its content in FIELDS renders an empty element — silently, since
+    # the element is emitted, just blank. Seven widgets shipped that way before
+    # anyone noticed, and only because a real screen was rebuilt.
+    #
+    # A new widget type must land in one list or the other. Adding it to
+    # `EXEMPT` is a decision someone makes on purpose; forgetting is what this
+    # test refuses to allow.
+    const MARK = "ZZMARKERZZ"
+
+    builders = Dict{Symbol,Function}(
+        :Label         => () -> Label(MARK),
+        :Static        => () -> Static(RichText(TextRun(MARK))),
+        :Button        => () -> Button(MARK, _ -> nothing),
+        :Checkbox      => () -> Checkbox(MARK),
+        :Container     => () -> Container(Label(MARK)),
+        :ErrorBoundary => () -> ErrorBoundary(Label(MARK)),
+        :Scrollpane    => () -> Scrollpane(Label(MARK)),
+        :Splitter      => () -> Splitter(Label(MARK), Label("b")),
+        :Tabs          => () -> Tabs(MARK => Label("panel")),
+        :TabStrip      => () -> Tabs(MARK => Label("panel")).strip,
+        :StatusBar     => () -> StatusBar(; left = RichText(TextRun(MARK))),
+        :MarkdownPane  => () -> MarkdownPane(MARK),
+        :ProgressList  => () -> ProgressList([ProgressItem(MARK, 0.5)]),
+        :List          => () -> List([MARK]),
+        :TextArea      => () -> TextArea(MARK),
+        :TextInput     => () -> TextInput(MARK),
+    )
+
+    # Each exemption states WHY, because an unexplained one is how a defect hides.
+    exempt = Dict{Symbol,String}(
+        :Sparkline          => "content is numbers; covered by its own test",
+        :ProgressBar        => "content is a fraction, not text",
+        :Slider             => "content is a number, not text",
+        :Spinner            => "content is a frame of animation",
+        :RadioGroup         => "content is its options; covered by DropDown's path",
+        :DropDown           => "renders a <select>; options covered separately",
+        :DropDownList       => "built inside DropDown, never reached on its own",
+        :Scrollbar          => "chrome the browser supplies itself",
+        :SplitHandle        => "chrome, no content",
+        :MinSizeOverlay     => "chrome shown only when a pane is too small",
+        :Form               => "mounts real children through add_field!",
+        :ImmediateContainer => "a container; children are mounted",
+        :LayoutBox          => "a container; children are mounted",
+        :DataTable          => "covered by the table tests",
+        :Table              => "covered by the table tests",
+        :TreeView           => "covered by the tree tests",
+    )
+
+    # Only ManyUI's OWN widgets: other test files define their own `Widget`
+    # subtypes as fixtures, and auditing those says nothing about the backend.
+    concrete = Type[]
+    walk(T) = for S in subtypes(T)
+        isabstracttype(S) ? walk(S) :
+            (parentmodule(S) === ManyUI && push!(concrete, S))
+    end
+    walk(ManyUI.Widget)
+    @test !isempty(concrete)
+
+    for S in concrete
+        name = nameof(S)
+        if haskey(builders, name)
+            html = ManyUIWeb.to_html(builders[name]())
+            @test occursin(MARK, html)
+        else
+            @test haskey(exempt, name)
+        end
+    end
+end

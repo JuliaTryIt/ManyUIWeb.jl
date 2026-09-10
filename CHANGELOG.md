@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Five more widgets rendered their content as an empty element** — the same
+  defect as the tab strip and the status bar below, audited empirically across
+  every widget type rather than guessed at.
+
+  The generic branch now walks `ManyUI.content_children(w)` instead of
+  `node.children`, which fixes **`ErrorBoundary`** structurally: it keeps the
+  widget it guards in a field, so a boundary used to hide exactly the content it
+  exists to protect. Any future wrapper is visible without this backend knowing
+  the type.
+
+  A traversal cannot help a widget whose content is *data*, so four got a
+  rendering, each reusing ManyUI's own logic so the browser and the terminal
+  cannot drift apart: **`Static`** (its `RichText`), **`Sparkline`**
+  (`spark_bounds`/`spark_level` and the shared glyphs), **`ProgressList`**
+  (its items as captioned bars) and **`MarkdownPane`** (`md_lines`, so a heading
+  is bold here because it is bold there).
+
+  A test now walks every widget type ManyUI defines and requires each to either
+  show its content or appear in an exemption list with a stated reason. Seven
+  widgets shipped blank before anyone noticed; a new one now fails the build
+  instead.
+
 - **A `StatusBar` reached the browser as an empty node.** The same shape as the
   tab strip below: its content lives in `left`, `center` and `right`, not in
   children, so the generic container branch had nothing to walk. The three slots
