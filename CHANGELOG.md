@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The palette is themeable.** Its colours are CSS custom properties now —
+  `--manyui-ground`, `--manyui-text`, `--manyui-selection`,
+  `--manyui-selection-list` among them — declared on `:root` and on
+  `.manyui-fragment`, with the previous values as the defaults. A host sets any
+  of them on any ancestor and the cascade does the rest; nothing that sets
+  nothing changes appearance.
+
+  The defaults are deliberately declared on the *class*, not on the fragment's
+  id. A host restating them scopes its rule to the id, which outranks a class
+  whatever the stylesheet order — so a host never has to escalate to
+  `!important` to be heard.
+
+  Embedding these widgets in an application with a palette of its own used to
+  require exactly that escalation. The selection rules carried `!important`
+  themselves:
+
+  ```css
+  .manyui-table-selected td { background: rgba(247, 37, 133, 0.2) !important; }
+  ```
+
+  and the fragment's ground arrived as an id-scoped rule emitted after the
+  host's stylesheet, so it won on order. A KaimonSlate admin panel ended up with
+  a block of `!important` overrides purely to stop looking like a second
+  application. Those rules read `var(--manyui-…, <old value>)` now.
+
 ### Fixed
 
 - **An embedded fragment's tabs were inert, and every panel showed at once.**

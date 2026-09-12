@@ -81,6 +81,34 @@ offline installs some hosts serve.
 const NATIVE_FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');"
 
 """
+The palette, as CSS custom properties.
+
+Declared rather than painted, so a host can restate it. Embedding these widgets
+in an application with a palette of its own used to mean out-shouting this
+stylesheet: the ground arrived as an inline style, and the selection rules
+carried `!important` themselves, so a host had to both out-specify and escalate.
+A KaimonSlate admin panel ended up with a block of `!important` overrides just
+to stop looking like a second application.
+
+Set any of these on any ancestor — `#my-panel { --manyui-selection: … }` — and
+the cascade does the rest. The values here are the defaults, so a host that sets
+nothing sees exactly what it saw before.
+"""
+const THEME_VARIABLES = raw"""
+            :root, .manyui-fragment {
+                --manyui-ground: #14002b;
+                --manyui-ground-page: linear-gradient(135deg, #1e003b 0%, #3a0ca3 100%);
+                --manyui-text: #ffffff;
+                --manyui-text-dim: #a6adc8;
+                --manyui-accent: #f72585;
+                --manyui-accent-alt: #b5179e;
+                --manyui-selection: rgba(247, 37, 133, 0.2);
+                --manyui-selection-list: rgba(76, 201, 240, 0.2);
+                --manyui-selection-list-edge: #4cc9f0;
+            }
+"""
+
+"""
 Every rule the WebNative backend's own markup needs.
 
 A constant rather than a heredoc inside `generate_document`, so a caller
@@ -90,8 +118,9 @@ const NATIVE_CSS = raw"""
 
             body {
                 font-family: 'Outfit', sans-serif;
-                background: linear-gradient(135deg, #1e003b 0%, #3a0ca3 100%);
-                color: #ffffff;
+                background: var(--manyui-ground-page,
+                    linear-gradient(135deg, #1e003b 0%, #3a0ca3 100%));
+                color: var(--manyui-text, #ffffff);
                 margin: 0;
                 padding: 2rem;
                 display: flex;
@@ -389,8 +418,8 @@ const NATIVE_CSS = raw"""
             }
 
             .manyui-list-selected {
-                background: rgba(76, 201, 240, 0.2) !important;
-                border-left: 4px solid #4cc9f0;
+                background: var(--manyui-selection-list, rgba(76, 201, 240, 0.2)) !important;
+                border-left: 4px solid var(--manyui-selection-list-edge, #4cc9f0);
                 font-weight: bold;
             }
 
@@ -421,7 +450,7 @@ const NATIVE_CSS = raw"""
             }
 
             .manyui-table-selected td {
-                background: rgba(247, 37, 133, 0.2) !important;
+                background: var(--manyui-selection, rgba(247, 37, 133, 0.2)) !important;
             }
 
             .manyui-log_panel {
@@ -764,7 +793,8 @@ The ground an embedded fragment paints for itself.
 fragment would otherwise take the host's background and font — and ManyUI's
 colours are chosen against a dark page.
 """
-const FRAGMENT_GROUND = "background: #14002b; color: #ffffff; " *
+const FRAGMENT_GROUND = "background: var(--manyui-ground, #14002b); " *
+    "color: var(--manyui-text, #ffffff); " *
     "font-family: ui-monospace, SFMono-Regular, Menlo, monospace; " *
     "padding: 1rem; border-radius: 12px;"
 
@@ -831,7 +861,11 @@ function fragment_html(w::ManyUI.Widget; id::AbstractString = "manyui-fragment")
     # font, and ManyUI's palette, designed for a dark page, loses its contrast.
     # The fragment carries its own ground instead.
     ground = string("#", id, " { ", FRAGMENT_GROUND, " }")
-    return string("<style>", ground, "\n#", id, " {\n", NATIVE_CSS, "\n}</style>",
+    # The defaults go out UNNESTED, on `.manyui-fragment` — a class. A host that
+    # restates them scopes its rule to the fragment's id, which outranks a class
+    # whatever the stylesheet order, so nothing has to escalate to `!important`.
+    return string("<style>", THEME_VARIABLES, ground,
+                  "\n#", id, " {\n", NATIVE_CSS, "\n}</style>",
                   "<div id=\"", id, "\" class=\"manyui-fragment\">",
                   to_html(w), "</div>",
                   "<script class=\"manyui-fragment-tabs\">", FRAGMENT_BEHAVIOUR, "</script>")

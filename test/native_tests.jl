@@ -519,3 +519,34 @@ end
     frag = ManyUIWeb.fragment_html(ManyUI.Label("x"); id = "f")
     @test occursin("[hidden]", frag)
 end
+
+@testitem "a host can theme the palette without out-shouting the stylesheet" begin
+    using ManyUIWeb: NATIVE_CSS, FRAGMENT_GROUND, THEME_VARIABLES
+
+    # Two mechanisms used to make an embedded fragment unthemeable. The ground
+    # was an inline style, beaten only by `!important`; and the selection rules
+    # carried `!important` themselves:
+    #
+    #     .manyui-table-selected td { background: rgba(247,37,133,.2) !important }
+    #
+    # so a host with its own palette had to both out-specify and escalate. A
+    # KaimonSlate admin panel embedding these widgets ended up with a block of
+    # `!important` overrides just to stop looking like a second application.
+    #
+    # The colours are custom properties now: a host sets three variables on any
+    # ancestor and the cascade does the rest.
+    for name in ("--manyui-ground", "--manyui-text", "--manyui-selection")
+        @test occursin(name, THEME_VARIABLES)
+    end
+
+    # The rules READ them, rather than naming colours directly.
+    @test occursin("var(--manyui-selection", NATIVE_CSS)
+    @test occursin("var(--manyui-ground", NATIVE_CSS)
+
+    # The magenta and cyan survive only as fallbacks inside `var(...)`, so a host
+    # that sets nothing still gets the original look.
+    @test occursin("var(--manyui-selection", NATIVE_CSS)
+
+    # And a fragment carries the defaults rather than hardcoding a background.
+    @test occursin("--manyui-ground", FRAGMENT_GROUND)
+end
