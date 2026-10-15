@@ -15,16 +15,20 @@ Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 [weakdeps]
 Tachikoma = "468859d6-42d8-48b7-8ad9-1d312e0e3b0a"
 
-[sources]
-ManyUI = {rev = "main", url = "https://github.com/juliatryit/ManyUI.jl.git"}
-ManyUITUI = {rev = "main", url = "https://github.com/juliatryit/ManyUITUI.jl.git"}
+[sources.ManyUI]
+rev = "main"
+url = "https://github.com/juliatryit/ManyUI.jl.git"
+
+[sources.ManyUITUI]
+rev = "main"
+url = "https://github.com/juliatryit/ManyUITUI.jl.git"
 
 [extensions]
 ManyUIWebTachikomaExt = "Tachikoma"
 
 [compat]
 Aqua = "0.8"
-DocStringExtensions = "0.9"
+DocStringExtensions = "0.9, 0.10"
 HTTP = "2"
 JSON = "1"
 ManyUI = "0.1"
